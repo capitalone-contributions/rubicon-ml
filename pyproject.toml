@@ -140,6 +140,11 @@ exclude = [
     "notebooks",
 ]
 
+[tool.coverage.run]
+omit = [
+    "rubicon_ml/repository/wandb.py",
+]
+
 [tool.pyproject-fmt]
 column_width = 1
 indent = 4
@@ -148,9 +153,10 @@ keep_full_version = true
 [tool.pytest.ini_options]
 markers = [
     "run_notebooks: tests that run Jupyter notebooks",
+    "wandb: tests that connect to Weights & Biases",
     "write_files: tests that physically write files to local and S3 filesystems",
 ]
-addopts = "--cov=./rubicon_ml --cov-report=term-missing --cov-fail-under=90 -m='not write_files'"
+addopts = "--cov=./rubicon_ml --cov-report=term-missing --cov-fail-under=90 -m='not write_files' -m 'not wandb'"
 minversion = "3.2"
 xfail_strict = true
 

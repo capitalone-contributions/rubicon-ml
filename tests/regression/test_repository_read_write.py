@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from rubicon_ml import domain
-from rubicon_ml.repository import LocalRepository, MemoryRepository
+from rubicon_ml.repository import LocalRepository, MemoryRepository, WandBRepository
 from rubicon_ml.repository.utils import json, slugify
 
 ARTIFACT_BINARY = b"artifact"
@@ -15,8 +15,12 @@ COMMENTS_TO_ADD = ["comment_a", "comment_b"]
 COMMENTS_TO_REMOVE = ["comment_a"]
 DATAFRAME = pd.DataFrame([[0]])
 REPOSITORIES_TO_TEST = [  # TODO: find local/CI S3 testing solution
-    LocalRepository,
-    MemoryRepository,
+    pytest.param(LocalRepository),
+    pytest.param(MemoryRepository),
+]
+REPOSITORIES_TO_READ_WRITE_TEST = [
+    # *REPOSITORIES_TO_TEST,
+    pytest.param(WandBRepository, marks=pytest.mark.wandb),
 ]
 TAGS_TO_ADD = ["added_a", "added_b"]
 TAGS_TO_REMOVE = ["added_a"]
@@ -588,7 +592,7 @@ def _test_read_write_additional_tags_and_comments(
     return is_passing
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_project_regression(project_json, repository_class):
     """Tests that `rubicon_ml` can read the project domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -608,7 +612,7 @@ def test_read_write_project_regression(project_json, repository_class):
         assert project == project_json
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_experiment_regression(experiment_json, project_json, repository_class):
     """Tests that `rubicon_ml` can read the experiment domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -639,7 +643,7 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_feature_regression(
     experiment_json,
     feature_json,
@@ -681,7 +685,7 @@ def test_read_write_feature_regression(
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_metric_regression(
     experiment_json,
     metric_json,
@@ -723,7 +727,7 @@ def test_read_write_metric_regression(
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_parameter_regression(
     experiment_json,
     parameter_json,
@@ -765,7 +769,7 @@ def test_read_write_parameter_regression(
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_artifact_project_regression(
     artifact_project_json,
     project_json,
@@ -808,7 +812,7 @@ def test_read_write_artifact_project_regression(
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_artifact_experiment_regression(
     artifact_experiment_json,
     experiment_json,
@@ -857,7 +861,7 @@ def test_read_write_artifact_experiment_regression(
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_dataframe_project_regression(
     dataframe_project_json,
     project_json,
@@ -900,7 +904,7 @@ def test_read_write_dataframe_project_regression(
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_dataframe_experiment_regression(
     dataframe_experiment_json,
     experiment_json,
