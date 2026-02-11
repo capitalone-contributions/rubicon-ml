@@ -380,6 +380,9 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Project
             The project with name `project_name`.
         """
+        if self._current_project is not None:
+            return self._current_project
+
         try:
             wandb_path = self._get_wandb_path(project_name)
             list(self.api.runs(wandb_path, per_page=1))
