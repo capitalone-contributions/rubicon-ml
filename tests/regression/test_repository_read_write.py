@@ -633,7 +633,7 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
 
-        time.sleep(5)  # allow `wandb` time to complete sync
+        time.sleep(2)  # allow `wandb` time to complete sync
 
         experiment = repository.get_experiment(
             domain_project.name,
@@ -669,25 +669,31 @@ def test_read_write_feature_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_feature = domain.Feature(**feature_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
         repository.create_feature(
-            domain.Feature(**feature_json),
-            project_json["name"],
-            experiment_json["id"],
+            domain_feature,
+            domain_project.name,
+            domain_experiment.id,
         )
+
+        time.sleep(2)  # allow `wandb` time to complete sync
+
         feature = repository.get_feature(
-            project_json["name"],
-            experiment_json["id"],
-            feature_json["name"],
+            domain_project.name,
+            domain_experiment.id,
+            domain_feature.name,
         ).__dict__
 
-        assert feature == feature_json
+        assert feature == domain_feature.__dict__
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=feature_json["name"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_feature.name,
             entity_type="Feature",
         )
 

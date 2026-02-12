@@ -289,10 +289,11 @@ class WandBRepository(BaseRepository):
             self._persist_domain_to_config("_rubicon_experiment_metadata", entity)
 
         elif isinstance(entity, domain.Feature):
-            self._persist_domain_to_config(f"_rubicon_feature_{entity.name}", entity)
+            entity_name = slugify(entity.name, separator="_")
+            self._persist_domain_to_config(f"_rubicon_feature_{entity_name}", entity)
 
             if entity.importance is not None:
-                self.wandb.log({f"{entity.name}_importance": entity.importance})
+                self.wandb.log({f"{entity_name}_importance": entity.importance})
 
         elif isinstance(entity, domain.Metric):
             self.wandb.log({entity.name: entity.value})
@@ -887,7 +888,7 @@ class WandBRepository(BaseRepository):
         """
         # Slugify names for Metrics, Features, and Parameters to match BaseRepository behavior
         if entity_type in ["Metric", "Feature", "Parameter"]:
-            entity_identifier = slugify(entity_identifier)
+            entity_identifier = slugify(entity_identifier, separator="_")
 
         return f"_rubicon_{key_type}_{entity_type.lower()}_{entity_identifier}_"
 
