@@ -570,9 +570,9 @@ def make_classification_dask_df(make_classification_df):
 def project_json():
     """JSON representation of a project."""
     return {
-        "name": "test project",
+        "name": "rubicon-ml integration test project",
         "created_at": datetime.datetime(2024, 1, 1),
-        "description": "test project description",
+        "description": "rubicon-ml integration test project description",
         "github_url": "github.com",
         "id": "ccf6b8f8-a166-4084-a51f-4f2b6afd2ad9",
         "training_metadata": [["training", "metadata"]],
@@ -583,7 +583,7 @@ def project_json():
 def experiment_json():
     """JSON representation of an experiment."""
     return {
-        "project_name": "test project",
+        "project_name": "rubicon-ml integration test project",
         "branch_name": "test-branch",
         "comments": ["comment a", "comment b"],
         "commit_hash": "abcde01",

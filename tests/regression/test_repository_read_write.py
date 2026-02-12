@@ -1,6 +1,7 @@
 import contextlib
 import os
 import tempfile
+import time
 import uuid
 
 import pandas as pd
@@ -11,19 +12,19 @@ from rubicon_ml.repository import LocalRepository, MemoryRepository, WandBReposi
 from rubicon_ml.repository.utils import json, slugify
 
 ARTIFACT_BINARY = b"artifact"
-COMMENTS_TO_ADD = ["comment_a", "comment_b"]
-COMMENTS_TO_REMOVE = ["comment_a"]
+COMMENTS_TO_ADD = ["added_comment_a", "added_comment_b"]
+COMMENTS_TO_REMOVE = ["added_comment_a"]
 DATAFRAME = pd.DataFrame([[0]])
 REPOSITORIES_TO_TEST = [  # TODO: find local/CI S3 testing solution
     pytest.param(LocalRepository),
     pytest.param(MemoryRepository),
 ]
 REPOSITORIES_TO_READ_WRITE_TEST = [
-    # *REPOSITORIES_TO_TEST,
+    *REPOSITORIES_TO_TEST,
     pytest.param(WandBRepository, marks=pytest.mark.wandb),
 ]
-TAGS_TO_ADD = ["added_a", "added_b"]
-TAGS_TO_REMOVE = ["added_a"]
+TAGS_TO_ADD = ["added_tag_a", "added_tag_b"]
+TAGS_TO_REMOVE = ["added_tag_a"]
 
 
 def _test_read_additional_tags_and_comments(
@@ -606,7 +607,8 @@ def test_read_write_project_regression(project_json, repository_class):
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
+        domain_project = domain.Project(**project_json)
+        repository.create_project(domain_project)
         project = repository.get_project(project_json["name"]).__dict__
 
         assert project == project_json
@@ -626,19 +628,24 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
+
+        time.sleep(5)  # allow `wandb` time to complete sync
+
         experiment = repository.get_experiment(
-            project_json["name"],
-            experiment_json["id"],
+            domain_project.name,
+            domain_experiment.id,
         ).__dict__
 
-        assert experiment == experiment_json
+        assert experiment == domain_experiment.__dict__
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=experiment_json["id"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_experiment.id,
             entity_type="Experiment",
         )
 
