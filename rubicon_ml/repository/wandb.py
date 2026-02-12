@@ -1,14 +1,16 @@
 import logging
 import os
 import tempfile
+from json import JSONDecodeError
 from typing import List, Optional
 
 import pandas as pd
 
 from rubicon_ml import domain
+from rubicon_ml.domain.utils.uuid import uuid4
 from rubicon_ml.exceptions import RubiconException
 from rubicon_ml.repository import BaseRepository
-from rubicon_ml.repository.utils import json
+from rubicon_ml.repository.utils import json, slugify
 
 LOGGER = logging.getLogger(__name__)
 
@@ -81,7 +83,8 @@ class WandBRepository(BaseRepository):
     @property
     def wandb(self):
         try:
-            import wandb
+            # import wandb
+            from c1_aiml_aem import wandb  #TODO: REMOVE
         except ImportError:
             raise RubiconException(
                 "Weights & Biases is not installed. `pip install wandb` to use this repository."
@@ -436,7 +439,7 @@ class WandBRepository(BaseRepository):
         if result is None:
             raise RubiconException(
                 f"No experiment metadata found for experiment '{experiment_id}'. "
-                "This run was not created through Rubicon."
+                "This run was not created with `rubicon-ml`."
             )
 
         return result
@@ -860,3 +863,292 @@ class WandBRepository(BaseRepository):
             raise RubiconException(
                 f"Failed to retrieve dataframe data for '{dataframe_id}': {str(e)}"
             ) from e
+
+    # -------- Tags --------
+
+    def _get_tag_comment_key_prefix(
+        self, entity_type: str, entity_identifier: str, key_type: str = "tags"
+    ) -> str:
+        """Get the prefix for tag/comment config keys.
+
+        Parameters
+        ----------
+        entity_type : str
+            The type of entity (e.g., 'Experiment', 'Metric', 'Feature').
+        entity_identifier : str
+            The identifier for the entity (ID or name).
+        key_type : str
+            Either 'tags' or 'comments'.
+
+        Returns
+        -------
+        str
+            The key prefix for config storage.
+        """
+        # Slugify names for Metrics, Features, and Parameters to match BaseRepository behavior
+        if entity_type in ["Metric", "Feature", "Parameter"]:
+            entity_identifier = slugify(entity_identifier)
+
+        return f"_rubicon_{key_type}_{entity_type.lower()}_{entity_identifier}_"
+
+    def add_tags(
+        self,
+        project_name: str,
+        tags: List[str],
+        experiment_id: Optional[str] = None,
+        entity_identifier: Optional[str] = None,
+        entity_type: Optional[str] = None,
+    ):
+        """Persist tags to W&B run.
+
+        Uses W&B's native run.tags for actual tag storage, and also stores
+        the operation history in config for rubicon-ml compatibility.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the project the object to tag belongs to.
+        tags : list of str
+            The tag values to persist.
+        experiment_id : str, optional
+            The ID of the experiment to apply the tags to.
+        entity_identifier : str, optional
+            The ID or name of the entity to apply the tags to.
+        entity_type : str, optional
+            The name of the entity's type (e.g., 'Experiment', 'Metric').
+        """
+        if experiment_id is None:
+            raise RubiconException("experiment_id is required to add tags in W&B.")
+
+        run = self._get_wandb_run(project_name, experiment_id)
+
+        # Use W&B's native tags for Experiment-level tags
+        if entity_type == "Experiment":
+            current_tags = list(run.tags) if run.tags else []
+            new_tags = current_tags + [t for t in tags if t not in current_tags]
+            run.tags = new_tags
+
+        # Store history in config for rubicon-ml audit trail
+        key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
+        key = f"{key_prefix}{uuid4()}"
+        run.config[key] = json.dumps({"added_tags": tags})
+
+        run.update()
+
+    def remove_tags(
+        self,
+        project_name: str,
+        tags: List[str],
+        experiment_id: Optional[str] = None,
+        entity_identifier: Optional[str] = None,
+        entity_type: Optional[str] = None,
+    ):
+        """Remove tags from W&B run.
+
+        Uses W&B's native run.tags for actual tag removal, and also stores
+        the operation history in config for rubicon-ml compatibility.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the project the object to untag belongs to.
+        tags : list of str
+            The tag values to remove.
+        experiment_id : str, optional
+            The ID of the experiment to remove the tags from.
+        entity_identifier : str, optional
+            The ID or name of the entity to remove the tags from.
+        entity_type : str, optional
+            The name of the entity's type (e.g., 'Experiment', 'Metric').
+        """
+        if experiment_id is None:
+            raise RubiconException("experiment_id is required to remove tags in W&B.")
+
+        run = self._get_wandb_run(project_name, experiment_id)
+
+        # Use W&B's native tags for Experiment-level tags
+        if entity_type == "Experiment":
+            current_tags = list(run.tags) if run.tags else []
+            new_tags = [t for t in current_tags if t not in tags]
+            run.tags = new_tags
+
+        # Store history in config for rubicon-ml audit trail
+        key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
+        key = f"{key_prefix}{uuid4()}"
+        run.config[key] = json.dumps({"removed_tags": tags})
+
+        run.update()
+
+    def get_tags(
+        self,
+        project_name: str,
+        experiment_id: Optional[str] = None,
+        entity_identifier: Optional[str] = None,
+        entity_type: Optional[str] = None,
+    ) -> List[dict]:
+        """Retrieve tags from W&B run config.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the project the object to retrieve tags from belongs to.
+        experiment_id : str, optional
+            The ID of the experiment to retrieve tags from.
+        entity_identifier : str, optional
+            The ID or name of the entity to retrieve tags from.
+        entity_type : str, optional
+            The name of the entity's type (e.g., 'Experiment', 'Metric').
+
+        Returns
+        -------
+        list of dict
+            A list of dictionaries with one key each, `added_tags` or `removed_tags`,
+            where the value is a list of tag names.
+        """
+        if experiment_id is None:
+            raise RubiconException("experiment_id is required to get tags in W&B.")
+
+        run = self._get_wandb_run(project_name, experiment_id)
+        key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
+
+        config = run.config
+        if isinstance(config, str):
+            config = json.loads(config)
+
+        tags_data = []
+        for key, value in config.items():
+            if key.startswith(key_prefix):
+                try:
+                    # Handle both direct values and wrapped values with 'value' key
+                    if isinstance(value, dict) and "value" in value:
+                        data = json.loads(value["value"])
+                    elif isinstance(value, str):
+                        data = json.loads(value)
+                    else:
+                        data = value
+                    tags_data.append(data)
+                except (TypeError, JSONDecodeError):
+                    continue
+
+        return tags_data
+
+    # -------- Comments --------
+
+    def add_comments(
+        self,
+        project_name: str,
+        comments: List[str],
+        experiment_id: Optional[str] = None,
+        entity_identifier: Optional[str] = None,
+        entity_type: Optional[str] = None,
+    ):
+        """Persist comments to W&B run config.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the project the object to comment belongs to.
+        comments : list of str
+            The comment values to persist.
+        experiment_id : str, optional
+            The ID of the experiment to apply the comments to.
+        entity_identifier : str, optional
+            The ID or name of the entity to apply the comments to.
+        entity_type : str, optional
+            The name of the entity's type (e.g., 'Experiment', 'Metric').
+        """
+        if experiment_id is None:
+            raise RubiconException("experiment_id is required to add comments in W&B.")
+
+        run = self._get_wandb_run(project_name, experiment_id)
+        key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
+        key = f"{key_prefix}{uuid4()}"
+
+        run.config[key] = json.dumps({"added_comments": comments})
+        run.update()
+
+    def remove_comments(
+        self,
+        project_name: str,
+        comments: List[str],
+        experiment_id: Optional[str] = None,
+        entity_identifier: Optional[str] = None,
+        entity_type: Optional[str] = None,
+    ):
+        """Remove comments from W&B run config.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the project the object to remove comments from belongs to.
+        comments : list of str
+            The comment values to remove.
+        experiment_id : str, optional
+            The ID of the experiment to remove the comments from.
+        entity_identifier : str, optional
+            The ID or name of the entity to remove the comments from.
+        entity_type : str, optional
+            The name of the entity's type (e.g., 'Experiment', 'Metric').
+        """
+        if experiment_id is None:
+            raise RubiconException("experiment_id is required to remove comments in W&B.")
+
+        run = self._get_wandb_run(project_name, experiment_id)
+        key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
+        key = f"{key_prefix}{uuid4()}"
+
+        run.config[key] = json.dumps({"removed_comments": comments})
+        run.update()
+
+    def get_comments(
+        self,
+        project_name: str,
+        experiment_id: Optional[str] = None,
+        entity_identifier: Optional[str] = None,
+        entity_type: Optional[str] = None,
+    ) -> List[dict]:
+        """Retrieve comments from W&B run config.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the project the object to retrieve comments from belongs to.
+        experiment_id : str, optional
+            The ID of the experiment to retrieve comments from.
+        entity_identifier : str, optional
+            The ID or name of the entity to retrieve comments from.
+        entity_type : str, optional
+            The name of the entity's type (e.g., 'Experiment', 'Metric').
+
+        Returns
+        -------
+        list of dict
+            A list of dictionaries with one key each, `added_comments` or `removed_comments`,
+            where the value is a list of comment strings.
+        """
+        if experiment_id is None:
+            raise RubiconException("experiment_id is required to get comments in W&B.")
+
+        run = self._get_wandb_run(project_name, experiment_id)
+        key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
+
+        config = run.config
+        if isinstance(config, str):
+            config = json.loads(config)
+
+        comments_data = []
+        for key, value in config.items():
+            if key.startswith(key_prefix):
+                try:
+                    # Handle both direct values and wrapped values with 'value' key
+                    if isinstance(value, dict) and "value" in value:
+                        data = json.loads(value["value"])
+                    elif isinstance(value, str):
+                        data = json.loads(value)
+                    else:
+                        data = value
+                    comments_data.append(data)
+                except (TypeError, JSONDecodeError):
+                    continue
+
+        return comments_data
