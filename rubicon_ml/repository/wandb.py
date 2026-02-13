@@ -317,7 +317,7 @@ class WandBRepository(BaseRepository):
                 artifact.save()
 
                 entity_id = entity.id
-                entity.id = entity.name  # for accurate W&B retrieval
+                entity.id = f"{entity.id}:{entity.name}"  # for accurate W&B retrieval
 
                 self._persist_domain_to_config(f"_rubicon_artifact_{entity_id}", entity)
             finally:
@@ -658,6 +658,7 @@ class WandBRepository(BaseRepository):
         """
         run = self._get_wandb_run(project_name, experiment_id)
 
+        artifact_id, _ = artifact_id.split(":")
         result = self._read_domain_from_config(
             run, f"_rubicon_artifact_{artifact_id}", domain.Artifact
         )
@@ -711,7 +712,9 @@ class WandBRepository(BaseRepository):
         """
         try:
             wandb_path = self._get_wandb_path(project_name)
-            artifact = self.api.artifact(f"{wandb_path}/{artifact_id}:latest")
+
+            artifact_id, artifact_name = artifact_id.split(":")
+            artifact = self.api.artifact(f"{wandb_path}/{artifact_name}:latest")
             artifact_dir = artifact.download()
             artifact_files = os.listdir(artifact_dir)
 
