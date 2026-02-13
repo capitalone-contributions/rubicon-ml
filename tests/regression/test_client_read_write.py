@@ -7,20 +7,19 @@ import pandas as pd
 import pytest
 
 from rubicon_ml import Rubicon
-
+from rubicon_ml.exceptions import RubiconException
 
 ARTIFACT_BINARY = b"artifact"
-DATAFRAME = pd.DataFrame([[0]], columns=["column_a"])
-TAGS_TO_ADD = ["added_tag_a", "added_tag_b"]
-TAGS_TO_REMOVE = ["added_tag_a"]
-COMMENTS_TO_ADD = ["added_comment_a", "added_comment_b"]
-COMMENTS_TO_REMOVE = ["added_comment_a"]
-
 CLIENTS_TO_TEST = [
     pytest.param("filesystem"),
     pytest.param("memory"),
     pytest.param("wandb", marks=pytest.mark.wandb),
 ]
+COMMENTS_TO_ADD = ["added_comment_a", "added_comment_b"]
+COMMENTS_TO_REMOVE = ["added_comment_a"]
+DATAFRAME = pd.DataFrame([[0]], columns=["column_a"])
+TAGS_TO_ADD = ["added_tag_a", "added_tag_b"]
+TAGS_TO_REMOVE = ["added_tag_a"]
 
 
 def _test_read_write_additional_tags_and_comments(entity):
@@ -171,7 +170,11 @@ def test_read_write_parameter_client_regression(parameter_parameters, experiment
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
 def test_read_write_artifact_project_client_regression(artifact_parameters, project_parameters, persistence):
-    """Tests that `rubicon_ml` client can read the artifact (project) entity that it wrote."""
+    """Tests that `rubicon_ml` client can read the artifact (project) entity that it wrote.
+
+    For wandb persistence, this test verifies that project-level artifacts raise
+    a RubiconException since W&B does not support project-level artifacts.
+    """
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
     else:
@@ -183,10 +186,13 @@ def test_read_write_artifact_project_client_regression(artifact_parameters, proj
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
         project = rubicon.create_project(**project_parameters)
-        artifact = project.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
 
         if persistence == "wandb":
-            time.sleep(4)  # allow `wandb` time to complete sync
+            with pytest.raises(RubiconException, match="does not support project-level artifacts"):
+                project.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
+            return
+
+        artifact = project.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
 
         retrieved_artifact = project.artifact(name=artifact.name)
 
@@ -224,7 +230,11 @@ def test_read_write_artifact_experiment_client_regression(artifact_parameters, e
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
 def test_read_write_dataframe_project_client_regression(dataframe_parameters, project_parameters, persistence):
-    """Tests that `rubicon_ml` client can read the dataframe (project) entity that it wrote."""
+    """Tests that `rubicon_ml` client can read the dataframe (project) entity that it wrote.
+
+    For wandb persistence, this test verifies that project-level dataframes raise
+    a RubiconException since W&B does not support project-level dataframes.
+    """
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
     else:
@@ -236,10 +246,13 @@ def test_read_write_dataframe_project_client_regression(dataframe_parameters, pr
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
         project = rubicon.create_project(**project_parameters)
-        dataframe = project.log_dataframe(df=DATAFRAME, **dataframe_parameters)
 
         if persistence == "wandb":
-            time.sleep(4)  # allow `wandb` time to complete sync
+            with pytest.raises(RubiconException, match="does not support project-level dataframes"):
+                project.log_dataframe(df=DATAFRAME, **dataframe_parameters)
+            return
+
+        dataframe = project.log_dataframe(df=DATAFRAME, **dataframe_parameters)
 
         retrieved_dataframe = project.dataframe(name=dataframe.name)
 

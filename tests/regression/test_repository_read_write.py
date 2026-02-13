@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from rubicon_ml import domain
+from rubicon_ml.exceptions import RubiconException
 from rubicon_ml.repository import LocalRepository, MemoryRepository, WandBRepository
 from rubicon_ml.repository.utils import json, slugify
 
@@ -804,7 +805,11 @@ def test_read_write_artifact_project_regression(
     project_json,
     repository_class,
 ):
-    """Tests that `rubicon_ml` can read the artifact (project) domain entity that it wrote."""
+    """Tests that `rubicon_ml` can read the artifact (project) domain entity that it wrote.
+
+    For WandBRepository, this test verifies that project-level artifacts raise
+    a RubiconException since W&B does not support project-level artifacts.
+    """
     if repository_class == LocalRepository:
         temp_dir_context = tempfile.TemporaryDirectory()
     else:
@@ -819,14 +824,21 @@ def test_read_write_artifact_project_regression(
         domain_project = domain.Project(**project_json)
         domain_artifact = domain.Artifact(**artifact_project_json)
         repository.create_project(domain_project)
+
+        if repository_class == WandBRepository:
+            with pytest.raises(RubiconException, match="does not support project-level artifacts"):
+                repository.create_artifact(
+                    domain_artifact,
+                    ARTIFACT_BINARY,
+                    domain_project.name,
+                )
+            return
+
         repository.create_artifact(
             domain_artifact,
             ARTIFACT_BINARY,
             domain_project.name,
         )
-
-        if repository_class == WandBRepository:
-            time.sleep(5)  # allow `wandb` time to complete sync
 
         artifact_project = repository.get_artifact_metadata(
             domain_project.name,
@@ -909,7 +921,11 @@ def test_read_write_dataframe_project_regression(
     project_json,
     repository_class,
 ):
-    """Tests that `rubicon_ml` can read the dataframe (project) domain entity that it wrote."""
+    """Tests that `rubicon_ml` can read the dataframe (project) domain entity that it wrote.
+
+    For WandBRepository, this test verifies that project-level dataframes raise
+    a RubiconException since W&B does not support project-level dataframes.
+    """
     if repository_class == LocalRepository:
         temp_dir_context = tempfile.TemporaryDirectory()
     else:
@@ -924,14 +940,21 @@ def test_read_write_dataframe_project_regression(
         domain_project = domain.Project(**project_json)
         domain_dataframe = domain.Dataframe(**dataframe_project_json)
         repository.create_project(domain_project)
+
+        if repository_class == WandBRepository:
+            with pytest.raises(RubiconException, match="does not support project-level dataframes"):
+                repository.create_dataframe(
+                    domain_dataframe,
+                    DATAFRAME,
+                    domain_project.name,
+                )
+            return
+
         repository.create_dataframe(
             domain_dataframe,
             DATAFRAME,
             domain_project.name,
         )
-
-        if repository_class == WandBRepository:
-            time.sleep(2)  # allow `wandb` time to complete sync
 
         dataframe_project = repository.get_dataframe_metadata(
             domain_project.name,

@@ -297,12 +297,14 @@ class WandBRepository(BaseRepository):
                 self.wandb.log({f"{entity_name}_importance": entity.importance})
 
         elif isinstance(entity, domain.Metric):
+            entity_name = slugify(entity.name, separator="_")
             self.wandb.log({entity.name: entity.value})
-            self._persist_domain_to_config(f"_rubicon_metric_{entity.name}", entity)
+            self._persist_domain_to_config(f"_rubicon_metric_{entity_name}", entity)
 
         elif isinstance(entity, domain.Parameter):
+            entity_name = slugify(entity.name, separator="_")
             self.wandb.config[entity.name] = entity.value
-            self._persist_domain_to_config(f"_rubicon_parameter_{entity.name}", entity)
+            self._persist_domain_to_config(f"_rubicon_parameter_{entity_name}", entity)
 
         elif isinstance(entity, domain.Artifact):
             with tempfile.NamedTemporaryFile(delete=False) as file:
@@ -497,8 +499,9 @@ class WandBRepository(BaseRepository):
             The metric with name `metric_name`.
         """
         run = self._get_wandb_run(project_name, experiment_id)
+        slugified_name = slugify(metric_name, separator="_")
 
-        result = self._read_domain_from_config(run, f"_rubicon_metric_{metric_name}", domain.Metric)
+        result = self._read_domain_from_config(run, f"_rubicon_metric_{slugified_name}", domain.Metric)
 
         if result is None:
             raise RubiconException(
@@ -548,9 +551,10 @@ class WandBRepository(BaseRepository):
             The parameter with name `parameter_name`.
         """
         run = self._get_wandb_run(project_name, experiment_id)
+        slugified_name = slugify(parameter_name, separator="_")
 
         result = self._read_domain_from_config(
-            run, f"_rubicon_parameter_{parameter_name}", domain.Parameter
+            run, f"_rubicon_parameter_{slugified_name}", domain.Parameter
         )
 
         if result is None:
@@ -636,6 +640,34 @@ class WandBRepository(BaseRepository):
         return self._read_domains_from_config(run, "_rubicon_feature_", domain.Feature)
 
     # -------- Artifacts --------
+
+    def create_artifact(self, artifact, data, project_name, experiment_id=None):
+        """Persist an artifact to W&B.
+
+        Parameters
+        ----------
+        artifact : rubicon.domain.Artifact
+            The artifact to persist.
+        data : bytes
+            The raw data to persist as an artifact.
+        project_name : str
+            The name of the project this artifact belongs to.
+        experiment_id : str, optional
+            The ID of the experiment this artifact belongs to.
+
+        Raises
+        ------
+        RubiconException
+            If experiment_id is None. W&B does not support project-level
+            artifacts as artifacts must be associated with a run.
+        """
+        if experiment_id is None:
+            raise RubiconException(
+                "The W&B backend does not support project-level artifacts. "
+                "Artifacts must be logged to an experiment (W&B run)."
+            )
+
+        super().create_artifact(artifact, data, project_name, experiment_id)
 
     def get_artifact_metadata(
         self, project_name: str, artifact_id: str, experiment_id: str
@@ -729,6 +761,34 @@ class WandBRepository(BaseRepository):
             raise RubiconException(f"Failed to retrieve artifact data for '{artifact_id}'.") from e
 
     # -------- Dataframes --------
+
+    def create_dataframe(self, dataframe, data, project_name, experiment_id=None):
+        """Persist a dataframe to W&B.
+
+        Parameters
+        ----------
+        dataframe : rubicon.domain.Dataframe
+            The dataframe to persist.
+        data : pandas.DataFrame, dask.dataframe.DataFrame, or polars DataFrame
+            The raw data to persist as a dataframe.
+        project_name : str
+            The name of the project this dataframe belongs to.
+        experiment_id : str, optional
+            The ID of the experiment this dataframe belongs to.
+
+        Raises
+        ------
+        RubiconException
+            If experiment_id is None. W&B does not support project-level
+            dataframes as they must be associated with a run.
+        """
+        if experiment_id is None:
+            raise RubiconException(
+                "The W&B backend does not support project-level dataframes. "
+                "Dataframes must be logged to an experiment (W&B run)."
+            )
+
+        super().create_dataframe(dataframe, data, project_name, experiment_id)
 
     def get_dataframe_metadata(
         self, project_name: str, dataframe_id: str, experiment_id: Optional[str] = None
