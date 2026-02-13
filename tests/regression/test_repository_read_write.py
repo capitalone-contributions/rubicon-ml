@@ -14,7 +14,7 @@ from rubicon_ml.repository.utils import json, slugify
 ARTIFACT_BINARY = b"artifact"
 COMMENTS_TO_ADD = ["added_comment_a", "added_comment_b"]
 COMMENTS_TO_REMOVE = ["added_comment_a"]
-DATAFRAME = pd.DataFrame([[0]])
+DATAFRAME = pd.DataFrame([[0]], columns=["column_a"])
 REPOSITORIES_TO_TEST = [  # TODO: find local/CI S3 testing solution
     pytest.param(LocalRepository),
     pytest.param(MemoryRepository),
@@ -984,7 +984,7 @@ def test_read_write_dataframe_experiment_regression(
         )
 
         if repository_class == WandBRepository:
-            time.sleep(2)  # allow `wandb` time to complete sync
+            time.sleep(4)  # allow `wandb` time to complete sync
 
         dataframe_experiment = repository.get_dataframe_metadata(
             domain_project.name,

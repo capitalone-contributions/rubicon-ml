@@ -10,7 +10,7 @@ from rubicon_ml import Rubicon
 
 
 ARTIFACT_BINARY = b"artifact"
-DATAFRAME = pd.DataFrame([[0]])
+DATAFRAME = pd.DataFrame([[0]], columns=["column_a"])
 TAGS_TO_ADD = ["added_tag_a", "added_tag_b"]
 TAGS_TO_REMOVE = ["added_tag_a"]
 COMMENTS_TO_ADD = ["added_comment_a", "added_comment_b"]
@@ -239,7 +239,7 @@ def test_read_write_dataframe_project_client_regression(dataframe_parameters, pr
         dataframe = project.log_dataframe(df=DATAFRAME, **dataframe_parameters)
 
         if persistence == "wandb":
-            time.sleep(2)  # allow `wandb` time to complete sync
+            time.sleep(4)  # allow `wandb` time to complete sync
 
         retrieved_dataframe = project.dataframe(name=dataframe.name)
 
@@ -266,7 +266,7 @@ def test_read_write_dataframe_experiment_client_regression(dataframe_parameters,
         dataframe = experiment.log_dataframe(df=DATAFRAME, **dataframe_parameters)
 
         if persistence == "wandb":
-            time.sleep(2)  # allow `wandb` time to complete sync
+            time.sleep(4)  # allow `wandb` time to complete sync
 
         retrieved_dataframe = experiment.dataframe(name=dataframe.name)
 
