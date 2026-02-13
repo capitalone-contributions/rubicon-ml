@@ -633,7 +633,8 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
 
-        time.sleep(2)  # allow `wandb` time to complete sync
+        if repository_class == WandBRepository:
+            time.sleep(2)  # allow `wandb` time to complete sync
 
         experiment = repository.get_experiment(
             domain_project.name,
@@ -680,7 +681,8 @@ def test_read_write_feature_regression(
             domain_experiment.id,
         )
 
-        time.sleep(2)  # allow `wandb` time to complete sync
+        if repository_class == WandBRepository:
+            time.sleep(2)  # allow `wandb` time to complete sync
 
         feature = repository.get_feature(
             domain_project.name,

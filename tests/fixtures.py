@@ -567,32 +567,50 @@ def make_classification_dask_df(make_classification_df):
 
 
 @pytest.fixture
-def project_json():
-    """JSON representation of a project."""
+def project_parameters():
+    """Input parameters for a project."""
+
     return {
-        "name": "rubicon-ml integration test project",
-        "created_at": datetime.datetime(2024, 1, 1),
-        "description": "rubicon-ml integration test project description",
+        "name": "rubicon-ml regression test project",
+        "description": "rubicon-ml regression test project description",
         "github_url": "github.com",
+    }
+
+
+@pytest.fixture
+def project_json(project_parameters):
+    """JSON representation of a project."""
+
+    return {
+        **project_parameters,
+        "created_at": datetime.datetime(2024, 1, 1),
         "id": "ccf6b8f8-a166-4084-a51f-4f2b6afd2ad9",
         "training_metadata": [["training", "metadata"]],
     }
 
 
 @pytest.fixture
-def experiment_json():
-    """JSON representation of an experiment."""
+def experiment_parameters():
+    """Input parameters for an experiment."""
+
     return {
-        "project_name": "rubicon-ml integration test project",
         "branch_name": "test-branch",
         "comments": ["comment a", "comment b"],
         "commit_hash": "abcde01",
-        "created_at": datetime.datetime(2024, 1, 1),
         "description": "test experiment description",
-        "id": "69e374cd-220b-4cda-9608-52277b38a976",
         "model_name": "test model",
         "name": "test experiment",
         "tags": ["tag_a", "tag_b"],
+    }
+
+@pytest.fixture
+def experiment_json(experiment_parameters):
+    """JSON representation of an experiment."""
+    return {
+        **experiment_parameters,
+        "created_at": datetime.datetime(2024, 1, 1),
+        "id": "69e374cd-220b-4cda-9608-52277b38a976",
+        "project_name": "rubicon-ml regression test project",
         "training_metadata": [["training", "metadata"]],
     }
 
