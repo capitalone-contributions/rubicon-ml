@@ -616,16 +616,25 @@ def experiment_json(experiment_parameters):
 
 
 @pytest.fixture
-def feature_json():
-    """JSON representation of a feature."""
+def feature_parameters():
+    """Input parameters for a feature."""
+
     return {
         "name": "test feature",
         "comments": ["comment a", "comment b"],
-        "created_at": datetime.datetime(2024, 1, 1),
         "description": "test feature description",
-        "id": str(uuid.uuid4()),
         "importance": 1.0,
         "tags": ["tag_a", "tag_b"],
+    }
+
+
+@pytest.fixture
+def feature_json(feature_parameters):
+    """JSON representation of a feature."""
+    return {
+        **feature_parameters,
+        "created_at": datetime.datetime(2024, 1, 1),
+        "id": str(uuid.uuid4()),
     }
 
 

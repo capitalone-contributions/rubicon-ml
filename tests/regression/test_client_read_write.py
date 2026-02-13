@@ -86,3 +86,29 @@ def test_read_write_experiment_client_regression(experiment_parameters, project_
 
         assert retrieved_experiment._domain == experiment._domain
         assert _test_read_write_additional_tags_and_comments(retrieved_experiment)
+
+
+@pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
+def test_read_write_feature_client_regression(feature_parameters, experiment_parameters, project_parameters, persistence):
+    """Tests that `rubicon_ml` client can read the feature entity that it wrote."""
+    if persistence == "filesystem":
+        temp_dir_context = tempfile.TemporaryDirectory()
+    else:
+        temp_dir_context = contextlib.nullcontext(
+            enter_result="./test_read_write_feature_client_regression/"
+        )
+
+    with temp_dir_context as temp_dir_name:
+        root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
+        rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
+        project = rubicon.create_project(**project_parameters)
+        experiment = project.log_experiment(**experiment_parameters)
+        feature = experiment.log_feature(**feature_parameters)
+
+        if persistence == "wandb":
+            time.sleep(2)  # allow `wandb` time to complete sync
+
+        retrieved_feature = experiment.feature(name=feature.name)
+
+        assert retrieved_feature._domain == feature._domain
+        assert _test_read_write_additional_tags_and_comments(retrieved_feature)
