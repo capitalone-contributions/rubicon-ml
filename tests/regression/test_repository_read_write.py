@@ -719,25 +719,32 @@ def test_read_write_metric_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_metric = domain.Metric(**metric_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
         repository.create_metric(
-            domain.Metric(**metric_json),
-            project_json["name"],
-            experiment_json["id"],
+            domain_metric,
+            domain_project.name,
+            domain_experiment.id,
         )
+
+        if repository_class == WandBRepository:
+            time.sleep(2)  # allow `wandb` time to complete sync
+
         metric = repository.get_metric(
-            project_json["name"],
-            experiment_json["id"],
-            metric_json["name"],
+            domain_project.name,
+            domain_experiment.id,
+            domain_metric.name,
         ).__dict__
 
-        assert metric == metric_json
+        assert metric == domain_metric.__dict__
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=metric_json["name"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_metric.name,
             entity_type="Metric",
         )
 
@@ -761,25 +768,32 @@ def test_read_write_parameter_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_parameter = domain.Parameter(**parameter_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
         repository.create_parameter(
-            domain.Parameter(**parameter_json),
-            project_json["name"],
-            experiment_json["id"],
+            domain_parameter,
+            domain_project.name,
+            domain_experiment.id,
         )
+
+        if repository_class == WandBRepository:
+            time.sleep(2)  # allow `wandb` time to complete sync
+
         parameter = repository.get_parameter(
-            project_json["name"],
-            experiment_json["id"],
-            parameter_json["name"],
+            domain_project.name,
+            domain_experiment.id,
+            domain_parameter.name,
         ).__dict__
 
-        assert parameter == parameter_json
+        assert parameter == domain_parameter.__dict__
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=parameter_json["name"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_parameter.name,
             entity_type="Parameter",
         )
 

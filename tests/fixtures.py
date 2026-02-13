@@ -639,31 +639,49 @@ def feature_json(feature_parameters):
 
 
 @pytest.fixture
-def metric_json():
-    """JSON representation of a metric."""
+def metric_parameters():
+    """Input parameters for a metric."""
+
     return {
         "name": "test metric",
         "value": 1.0,
         "comments": ["comment a", "comment b"],
-        "created_at": datetime.datetime(2024, 1, 1),
         "description": "test metric description",
         "directionality": "score",
-        "id": str(uuid.uuid4()),
         "tags": ["tag_a", "tag_b"],
     }
 
 
 @pytest.fixture
-def parameter_json():
-    """JSON representation of a parameter."""
+def metric_json(metric_parameters):
+    """JSON representation of a metric."""
+    return {
+        **metric_parameters,
+        "created_at": datetime.datetime(2024, 1, 1),
+        "id": str(uuid.uuid4()),
+    }
+
+
+@pytest.fixture
+def parameter_parameters():
+    """Input parameters for a parameter."""
+
     return {
         "name": "test parameter",
         "value": 1.0,
         "comments": ["comment a", "comment b"],
-        "created_at": datetime.datetime(2024, 1, 1),
         "description": "test parameter description",
-        "id": str(uuid.uuid4()),
         "tags": ["tag_a", "tag_b"],
+    }
+
+
+@pytest.fixture
+def parameter_json(parameter_parameters):
+    """JSON representation of a parameter."""
+    return {
+        **parameter_parameters,
+        "created_at": datetime.datetime(2024, 1, 1),
+        "id": str(uuid.uuid4()),
     }
 
 

@@ -112,3 +112,55 @@ def test_read_write_feature_client_regression(feature_parameters, experiment_par
 
         assert retrieved_feature._domain == feature._domain
         assert _test_read_write_additional_tags_and_comments(retrieved_feature)
+
+
+@pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
+def test_read_write_metric_client_regression(metric_parameters, experiment_parameters, project_parameters, persistence):
+    """Tests that `rubicon_ml` client can read the metric entity that it wrote."""
+    if persistence == "filesystem":
+        temp_dir_context = tempfile.TemporaryDirectory()
+    else:
+        temp_dir_context = contextlib.nullcontext(
+            enter_result="./test_read_write_metric_client_regression/"
+        )
+
+    with temp_dir_context as temp_dir_name:
+        root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
+        rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
+        project = rubicon.create_project(**project_parameters)
+        experiment = project.log_experiment(**experiment_parameters)
+        metric = experiment.log_metric(**metric_parameters)
+
+        if persistence == "wandb":
+            time.sleep(2)  # allow `wandb` time to complete sync
+
+        retrieved_metric = experiment.metric(name=metric.name)
+
+        assert retrieved_metric._domain == metric._domain
+        assert _test_read_write_additional_tags_and_comments(retrieved_metric)
+
+
+@pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
+def test_read_write_parameter_client_regression(parameter_parameters, experiment_parameters, project_parameters, persistence):
+    """Tests that `rubicon_ml` client can read the parameter entity that it wrote."""
+    if persistence == "filesystem":
+        temp_dir_context = tempfile.TemporaryDirectory()
+    else:
+        temp_dir_context = contextlib.nullcontext(
+            enter_result="./test_read_write_parameter_client_regression/"
+        )
+
+    with temp_dir_context as temp_dir_name:
+        root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
+        rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
+        project = rubicon.create_project(**project_parameters)
+        experiment = project.log_experiment(**experiment_parameters)
+        parameter = experiment.log_parameter(**parameter_parameters)
+
+        if persistence == "wandb":
+            time.sleep(2)  # allow `wandb` time to complete sync
+
+        retrieved_parameter = experiment.parameter(name=parameter.name)
+
+        assert retrieved_parameter._domain == parameter._domain
+        assert _test_read_write_additional_tags_and_comments(retrieved_parameter)
