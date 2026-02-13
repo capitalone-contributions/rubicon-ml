@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import time
 from json import JSONDecodeError
 from typing import List, Optional
 
@@ -932,7 +933,7 @@ class WandBRepository(BaseRepository):
         # Store history in config for rubicon-ml audit trail
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
         key = f"{key_prefix}{uuid4()}"
-        run.config[key] = json.dumps({"added_tags": tags})
+        run.config[key] = json.dumps({"added_tags": tags, "_timestamp": time.time()})
 
         run.update()
 
@@ -976,7 +977,7 @@ class WandBRepository(BaseRepository):
         # Store history in config for rubicon-ml audit trail
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
         key = f"{key_prefix}{uuid4()}"
-        run.config[key] = json.dumps({"removed_tags": tags})
+        run.config[key] = json.dumps({"removed_tags": tags, "_timestamp": time.time()})
 
         run.update()
 
@@ -1031,6 +1032,8 @@ class WandBRepository(BaseRepository):
                 except (TypeError, JSONDecodeError):
                     continue
 
+        tags_data.sort(key=lambda x: x.get("_timestamp", 0))
+
         return tags_data
 
     # -------- Comments --------
@@ -1065,7 +1068,7 @@ class WandBRepository(BaseRepository):
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
         key = f"{key_prefix}{uuid4()}"
 
-        run.config[key] = json.dumps({"added_comments": comments})
+        run.config[key] = json.dumps({"added_comments": comments, "_timestamp": time.time()})
         run.update()
 
     def remove_comments(
@@ -1098,7 +1101,7 @@ class WandBRepository(BaseRepository):
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
         key = f"{key_prefix}{uuid4()}"
 
-        run.config[key] = json.dumps({"removed_comments": comments})
+        run.config[key] = json.dumps({"removed_comments": comments, "_timestamp": time.time()})
         run.update()
 
     def get_comments(
@@ -1151,5 +1154,7 @@ class WandBRepository(BaseRepository):
                     comments_data.append(data)
                 except (TypeError, JSONDecodeError):
                     continue
+
+        comments_data.sort(key=lambda x: x.get("_timestamp", 0))
 
         return comments_data
