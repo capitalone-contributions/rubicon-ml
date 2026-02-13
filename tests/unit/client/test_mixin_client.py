@@ -559,11 +559,11 @@ def test_get_taggable_experiment_identifiers(project_client):
     project = project_client
     experiment = project.log_experiment()
 
-    project_name, experiment_id, dataframe_id = TagMixin._get_taggable_identifiers(experiment)
+    project_name, experiment_id, entity_id = TagMixin._get_taggable_identifiers(experiment)
 
     assert project_name == project.name
     assert experiment_id == experiment.id
-    assert dataframe_id is None
+    assert entity_id == experiment.id
 
 
 def test_get_taggable_dataframe_identifiers(project_client, test_dataframe):
