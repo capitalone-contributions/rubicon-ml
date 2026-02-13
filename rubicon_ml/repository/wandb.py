@@ -62,6 +62,8 @@ class WandBRepository(BaseRepository):
         self.entity = entity
         self.storage_options = storage_options
 
+        self.run = None
+
         self._current_artifact_bytes = None
         self._current_dataframe = None
         self._current_project = None
@@ -281,11 +283,11 @@ class WandBRepository(BaseRepository):
             if entity.tags:
                 run_config["tags"] = entity.tags
 
-            run = self.wandb.init(**run_config)
+            self.run = self.wandb.init(**run_config)
 
-            entity.id = run.id  # for accurate W&B retrieval
+            entity.id = self.run.id  # for accurate W&B retrieval
             if entity.name is None:
-                entity.name = run.name
+                entity.name = self.run.name
 
             self._persist_domain_to_config("_rubicon_experiment_metadata", entity)
 
@@ -434,10 +436,10 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Experiment
             The experiment with ID `experiment_id`.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        self.run = self._get_wandb_run(project_name, experiment_id)
 
         result = self._read_domain_from_config(
-            run, "_rubicon_experiment_metadata", domain.Experiment
+            self.run, "_rubicon_experiment_metadata", domain.Experiment
         )
 
         if result is None:

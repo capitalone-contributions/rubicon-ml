@@ -1,7 +1,6 @@
 import contextlib
 import os
 import tempfile
-import time
 import uuid
 
 import pandas as pd
@@ -13,8 +12,8 @@ from rubicon_ml.repository import LocalRepository, MemoryRepository, WandBReposi
 from rubicon_ml.repository.utils import json, slugify
 
 ARTIFACT_BINARY = b"artifact"
-COMMENTS_TO_ADD = ["added_comment_a", "added_comment_b"]
-COMMENTS_TO_REMOVE = ["added_comment_a"]
+COMMENTS_TO_ADD = ["added comment a", "added comment b"]
+COMMENTS_TO_REMOVE = ["added comment a"]
 DATAFRAME = pd.DataFrame([[0]], columns=["column_a"])
 REPOSITORIES_TO_TEST = [  # TODO: find local/CI S3 testing solution
     pytest.param(LocalRepository),
@@ -544,11 +543,9 @@ def test_read_dataframe_experiment_regression(
             assert dataframe_experiment_data.equals(DATAFRAME)
 
 
-def _test_read_write_additional_tags_and_comments(
+def _write_additional_tags_and_comments(
     repository, project_name, **entity_identification_kwargs
 ):
-    is_passing = True
-
     repository.add_tags(
         project_name,
         TAGS_TO_ADD,
@@ -559,6 +556,23 @@ def _test_read_write_additional_tags_and_comments(
         TAGS_TO_REMOVE,
         **entity_identification_kwargs,
     )
+    repository.add_comments(
+        project_name,
+        COMMENTS_TO_ADD,
+        **entity_identification_kwargs,
+    )
+    repository.remove_comments(
+        project_name,
+        COMMENTS_TO_REMOVE,
+        **entity_identification_kwargs,
+    )
+
+
+def _test_read_write_additional_tags_and_comments(
+    repository, project_name, **entity_identification_kwargs
+):
+    is_passing = True
+
     additional_tags = repository.get_tags(
         project_name,
         **entity_identification_kwargs,
@@ -570,16 +584,6 @@ def _test_read_write_additional_tags_and_comments(
         if "removed_tags" in tags:
             is_passing &= tags["removed_tags"] == TAGS_TO_REMOVE
 
-    repository.add_comments(
-        project_name,
-        COMMENTS_TO_ADD,
-        **entity_identification_kwargs,
-    )
-    repository.remove_comments(
-        project_name,
-        COMMENTS_TO_REMOVE,
-        **entity_identification_kwargs,
-    )
     additional_comments = repository.get_comments(
         project_name,
         **entity_identification_kwargs,
@@ -634,8 +638,16 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_experiment.id,
+            entity_type="Experiment",
+        )
+
         if repository_class == WandBRepository:
-            time.sleep(2)  # allow `wandb` time to complete sync
+            repository.run.finish()
 
         experiment = repository.get_experiment(
             domain_project.name,
@@ -682,8 +694,16 @@ def test_read_write_feature_regression(
             domain_experiment.id,
         )
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_feature.name,
+            entity_type="Feature",
+        )
+
         if repository_class == WandBRepository:
-            time.sleep(2)  # allow `wandb` time to complete sync
+            repository.run.finish()
 
         feature = repository.get_feature(
             domain_project.name,
@@ -731,8 +751,16 @@ def test_read_write_metric_regression(
             domain_experiment.id,
         )
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_metric.name,
+            entity_type="Metric",
+        )
+
         if repository_class == WandBRepository:
-            time.sleep(2)  # allow `wandb` time to complete sync
+            repository.run.finish()
 
         metric = repository.get_metric(
             domain_project.name,
@@ -780,8 +808,16 @@ def test_read_write_parameter_regression(
             domain_experiment.id,
         )
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_parameter.name,
+            entity_type="Parameter",
+        )
+
         if repository_class == WandBRepository:
-            time.sleep(2)  # allow `wandb` time to complete sync
+            repository.run.finish()
 
         parameter = repository.get_parameter(
             domain_project.name,
@@ -840,6 +876,13 @@ def test_read_write_artifact_project_regression(
             domain_project.name,
         )
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            entity_identifier=domain_artifact.id,
+            entity_type="Artifact",
+        )
+
         artifact_project = repository.get_artifact_metadata(
             domain_project.name,
             domain_artifact.id,
@@ -890,8 +933,16 @@ def test_read_write_artifact_experiment_regression(
             domain_experiment.id,
         )
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_artifact.id,
+            entity_type="Artifact",
+        )
+
         if repository_class == WandBRepository:
-            time.sleep(4)  # allow `wandb` time to complete sync
+            repository.run.finish()
 
         artifact_experiment = repository.get_artifact_metadata(
             domain_project.name,
@@ -956,6 +1007,13 @@ def test_read_write_dataframe_project_regression(
             domain_project.name,
         )
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            entity_identifier=domain_dataframe.id,
+            entity_type="Dataframe",
+        )
+
         dataframe_project = repository.get_dataframe_metadata(
             domain_project.name,
             domain_dataframe.id,
@@ -1006,8 +1064,16 @@ def test_read_write_dataframe_experiment_regression(
             domain_experiment.id,
         )
 
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_dataframe.id,
+            entity_type="Dataframe",
+        )
+
         if repository_class == WandBRepository:
-            time.sleep(4)  # allow `wandb` time to complete sync
+            repository.run.finish()
 
         dataframe_experiment = repository.get_dataframe_metadata(
             domain_project.name,
