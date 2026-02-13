@@ -816,27 +816,33 @@ def test_read_write_artifact_project_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
+        domain_project = domain.Project(**project_json)
+        domain_artifact = domain.Artifact(**artifact_project_json)
+        repository.create_project(domain_project)
         repository.create_artifact(
-            domain.Artifact(**artifact_project_json),
+            domain_artifact,
             ARTIFACT_BINARY,
-            project_json["name"],
-        )
-        artifact_project = repository.get_artifact_metadata(
-            project_json["name"],
-            artifact_project_json["id"],
-        ).__dict__
-        artifact_project_data = repository.get_artifact_data(
-            project_json["name"],
-            artifact_project_json["id"],
+            domain_project.name,
         )
 
-        assert artifact_project == artifact_project_json
+        if repository_class == WandBRepository:
+            time.sleep(5)  # allow `wandb` time to complete sync
+
+        artifact_project = repository.get_artifact_metadata(
+            domain_project.name,
+            domain_artifact.id,
+        ).__dict__
+        artifact_project_data = repository.get_artifact_data(
+            domain_project.name,
+            domain_artifact.id,
+        )
+
+        assert artifact_project == domain_artifact.__dict__
         assert artifact_project_data == ARTIFACT_BINARY
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            entity_identifier=artifact_project_json["id"],
+            domain_project.name,
+            entity_identifier=domain_artifact.id,
             entity_type="Artifact",
         )
 
@@ -860,32 +866,39 @@ def test_read_write_artifact_experiment_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_artifact = domain.Artifact(**artifact_experiment_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
         repository.create_artifact(
-            domain.Artifact(**artifact_experiment_json),
+            domain_artifact,
             ARTIFACT_BINARY,
-            project_json["name"],
-            experiment_json["id"],
-        )
-        artifact_experiment = repository.get_artifact_metadata(
-            project_json["name"],
-            artifact_experiment_json["id"],
-            experiment_json["id"],
-        ).__dict__
-        artifact_experiment_data = repository.get_artifact_data(
-            project_json["name"],
-            artifact_experiment_json["id"],
-            experiment_json["id"],
+            domain_project.name,
+            domain_experiment.id,
         )
 
-        assert artifact_experiment == artifact_experiment_json
+        if repository_class == WandBRepository:
+            time.sleep(4)  # allow `wandb` time to complete sync
+
+        artifact_experiment = repository.get_artifact_metadata(
+            domain_project.name,
+            domain_artifact.id,
+            domain_experiment.id,
+        ).__dict__
+        artifact_experiment_data = repository.get_artifact_data(
+            domain_project.name,
+            domain_artifact.id,
+            domain_experiment.id,
+        )
+
+        assert artifact_experiment == domain_artifact.__dict__
         assert artifact_experiment_data == ARTIFACT_BINARY
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=artifact_experiment_json["id"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_artifact.id,
             entity_type="Artifact",
         )
 
@@ -908,27 +921,33 @@ def test_read_write_dataframe_project_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
+        domain_project = domain.Project(**project_json)
+        domain_dataframe = domain.Dataframe(**dataframe_project_json)
+        repository.create_project(domain_project)
         repository.create_dataframe(
-            domain.Dataframe(**dataframe_project_json),
+            domain_dataframe,
             DATAFRAME,
-            project_json["name"],
-        )
-        dataframe_project = repository.get_dataframe_metadata(
-            project_json["name"],
-            dataframe_project_json["id"],
-        ).__dict__
-        dataframe_project_data = repository.get_dataframe_data(
-            project_json["name"],
-            dataframe_project_json["id"],
+            domain_project.name,
         )
 
-        assert dataframe_project == dataframe_project_json
+        if repository_class == WandBRepository:
+            time.sleep(2)  # allow `wandb` time to complete sync
+
+        dataframe_project = repository.get_dataframe_metadata(
+            domain_project.name,
+            domain_dataframe.id,
+        ).__dict__
+        dataframe_project_data = repository.get_dataframe_data(
+            domain_project.name,
+            domain_dataframe.id,
+        )
+
+        assert dataframe_project == domain_dataframe.__dict__
         assert dataframe_project_data.equals(DATAFRAME)
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            entity_identifier=dataframe_project_json["id"],
+            domain_project.name,
+            entity_identifier=domain_dataframe.id,
             entity_type="Dataframe",
         )
 
@@ -952,32 +971,39 @@ def test_read_write_dataframe_experiment_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_dataframe = domain.Dataframe(**dataframe_experiment_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
         repository.create_dataframe(
-            domain.Dataframe(**dataframe_experiment_json),
+            domain_dataframe,
             DATAFRAME,
-            project_json["name"],
-            experiment_json["id"],
-        )
-        dataframe_experiment = repository.get_dataframe_metadata(
-            project_json["name"],
-            dataframe_experiment_json["id"],
-            experiment_json["id"],
-        ).__dict__
-        dataframe_experiment_data = repository.get_dataframe_data(
-            project_json["name"],
-            dataframe_experiment_json["id"],
-            experiment_json["id"],
+            domain_project.name,
+            domain_experiment.id,
         )
 
-        assert dataframe_experiment == dataframe_experiment_json
+        if repository_class == WandBRepository:
+            time.sleep(2)  # allow `wandb` time to complete sync
+
+        dataframe_experiment = repository.get_dataframe_metadata(
+            domain_project.name,
+            domain_dataframe.id,
+            domain_experiment.id,
+        ).__dict__
+        dataframe_experiment_data = repository.get_dataframe_data(
+            domain_project.name,
+            domain_dataframe.id,
+            domain_experiment.id,
+        )
+
+        assert dataframe_experiment == domain_dataframe.__dict__
         assert dataframe_experiment_data.equals(DATAFRAME)
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=dataframe_experiment_json["id"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_dataframe.id,
             entity_type="Dataframe",
         )
 

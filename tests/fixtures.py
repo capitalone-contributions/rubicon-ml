@@ -686,56 +686,68 @@ def parameter_json(parameter_parameters):
 
 
 @pytest.fixture
-def artifact_project_json():
+def artifact_parameters():
+    """Input parameters for an artifact."""
+
+    return {
+        "name": "test-artifact",
+        "comments": ["comment a", "comment b"],
+        "description": "test artifact description",
+        "tags": ["tag_a", "tag_b"],
+    }
+
+
+@pytest.fixture
+def artifact_project_json(artifact_parameters):
     """JSON representation of an artifact belonging to a project."""
     return {
-        "name": "test artifact",
-        "comments": ["comment a", "comment b"],
+        **artifact_parameters,
         "created_at": datetime.datetime(2024, 1, 1),
-        "description": "test parameter description",
         "id": str(uuid.uuid4()),
         "parent_id": "ccf6b8f8-a166-4084-a51f-4f2b6afd2ad9",
-        "tags": ["tag_a", "tag_b"],
     }
 
 
 @pytest.fixture
-def artifact_experiment_json():
+def artifact_experiment_json(artifact_parameters):
     """JSON representation of an artifact belonging to an experiment."""
     return {
-        "name": "test artifact",
-        "comments": ["comment a", "comment b"],
+        **artifact_parameters,
         "created_at": datetime.datetime(2024, 1, 1),
-        "description": "test parameter description",
         "id": str(uuid.uuid4()),
         "parent_id": "69e374cd-220b-4cda-9608-52277b38a976",
+    }
+
+
+@pytest.fixture
+def dataframe_parameters():
+    """Input parameters for a dataframe."""
+
+    return {
+        "name": "test-dataframe",
+        "comments": ["comment a", "comment b"],
+        "description": "test dataframe description",
         "tags": ["tag_a", "tag_b"],
     }
 
 
 @pytest.fixture
-def dataframe_project_json():
+def dataframe_project_json(dataframe_parameters):
     """JSON representation of a dataframe belonging to a project."""
     return {
-        "comments": ["comment a", "comment b"],
+        **dataframe_parameters,
         "created_at": datetime.datetime(2024, 1, 1),
-        "description": "test parameter description",
         "id": str(uuid.uuid4()),
-        "name": "test dataframe",
         "parent_id": "ccf6b8f8-a166-4084-a51f-4f2b6afd2ad9",
-        "tags": ["tag_a", "tag_b"],
     }
 
 
 @pytest.fixture
-def dataframe_experiment_json():
+def dataframe_experiment_json(dataframe_parameters):
     """JSON representation of a dataframe belonging to an experiment."""
     return {
-        "comments": ["comment a", "comment b"],
+        **dataframe_parameters,
         "created_at": datetime.datetime(2024, 1, 1),
-        "description": "test parameter description",
         "id": str(uuid.uuid4()),
-        "name": "test dataframe",
         "parent_id": "69e374cd-220b-4cda-9608-52277b38a976",
-        "tags": ["tag_a", "tag_b"],
     }

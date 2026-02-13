@@ -3,11 +3,14 @@ import os
 import tempfile
 import time
 
+import pandas as pd
 import pytest
 
 from rubicon_ml import Rubicon
 
 
+ARTIFACT_BINARY = b"artifact"
+DATAFRAME = pd.DataFrame([[0]])
 TAGS_TO_ADD = ["added_tag_a", "added_tag_b"]
 TAGS_TO_REMOVE = ["added_tag_a"]
 COMMENTS_TO_ADD = ["added_comment_a", "added_comment_b"]
@@ -164,3 +167,109 @@ def test_read_write_parameter_client_regression(parameter_parameters, experiment
 
         assert retrieved_parameter._domain == parameter._domain
         assert _test_read_write_additional_tags_and_comments(retrieved_parameter)
+
+
+@pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
+def test_read_write_artifact_project_client_regression(artifact_parameters, project_parameters, persistence):
+    """Tests that `rubicon_ml` client can read the artifact (project) entity that it wrote."""
+    if persistence == "filesystem":
+        temp_dir_context = tempfile.TemporaryDirectory()
+    else:
+        temp_dir_context = contextlib.nullcontext(
+            enter_result="./test_read_write_artifact_project_client_regression/"
+        )
+
+    with temp_dir_context as temp_dir_name:
+        root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
+        rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
+        project = rubicon.create_project(**project_parameters)
+        artifact = project.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
+
+        if persistence == "wandb":
+            time.sleep(4)  # allow `wandb` time to complete sync
+
+        retrieved_artifact = project.artifact(name=artifact.name)
+
+        assert retrieved_artifact._domain == artifact._domain
+        assert retrieved_artifact.get_data() == ARTIFACT_BINARY
+        assert _test_read_write_additional_tags_and_comments(retrieved_artifact)
+
+
+@pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
+def test_read_write_artifact_experiment_client_regression(artifact_parameters, experiment_parameters, project_parameters, persistence):
+    """Tests that `rubicon_ml` client can read the artifact (experiment) entity that it wrote."""
+    if persistence == "filesystem":
+        temp_dir_context = tempfile.TemporaryDirectory()
+    else:
+        temp_dir_context = contextlib.nullcontext(
+            enter_result="./test_read_write_artifact_experiment_client_regression/"
+        )
+
+    with temp_dir_context as temp_dir_name:
+        root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
+        rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
+        project = rubicon.create_project(**project_parameters)
+        experiment = project.log_experiment(**experiment_parameters)
+        artifact = experiment.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
+
+        if persistence == "wandb":
+            time.sleep(4)  # allow `wandb` time to complete sync
+
+        retrieved_artifact = experiment.artifact(name=artifact.name)
+
+        assert retrieved_artifact._domain == artifact._domain
+        assert retrieved_artifact.get_data() == ARTIFACT_BINARY
+        assert _test_read_write_additional_tags_and_comments(retrieved_artifact)
+
+
+@pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
+def test_read_write_dataframe_project_client_regression(dataframe_parameters, project_parameters, persistence):
+    """Tests that `rubicon_ml` client can read the dataframe (project) entity that it wrote."""
+    if persistence == "filesystem":
+        temp_dir_context = tempfile.TemporaryDirectory()
+    else:
+        temp_dir_context = contextlib.nullcontext(
+            enter_result="./test_read_write_dataframe_project_client_regression/"
+        )
+
+    with temp_dir_context as temp_dir_name:
+        root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
+        rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
+        project = rubicon.create_project(**project_parameters)
+        dataframe = project.log_dataframe(df=DATAFRAME, **dataframe_parameters)
+
+        if persistence == "wandb":
+            time.sleep(2)  # allow `wandb` time to complete sync
+
+        retrieved_dataframe = project.dataframe(name=dataframe.name)
+
+        assert retrieved_dataframe._domain == dataframe._domain
+        assert retrieved_dataframe.get_data().equals(DATAFRAME)
+        assert _test_read_write_additional_tags_and_comments(retrieved_dataframe)
+
+
+@pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
+def test_read_write_dataframe_experiment_client_regression(dataframe_parameters, experiment_parameters, project_parameters, persistence):
+    """Tests that `rubicon_ml` client can read the dataframe (experiment) entity that it wrote."""
+    if persistence == "filesystem":
+        temp_dir_context = tempfile.TemporaryDirectory()
+    else:
+        temp_dir_context = contextlib.nullcontext(
+            enter_result="./test_read_write_dataframe_experiment_client_regression/"
+        )
+
+    with temp_dir_context as temp_dir_name:
+        root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
+        rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
+        project = rubicon.create_project(**project_parameters)
+        experiment = project.log_experiment(**experiment_parameters)
+        dataframe = experiment.log_dataframe(df=DATAFRAME, **dataframe_parameters)
+
+        if persistence == "wandb":
+            time.sleep(2)  # allow `wandb` time to complete sync
+
+        retrieved_dataframe = experiment.dataframe(name=dataframe.name)
+
+        assert retrieved_dataframe._domain == dataframe._domain
+        assert retrieved_dataframe.get_data().equals(DATAFRAME)
+        assert _test_read_write_additional_tags_and_comments(retrieved_dataframe)
