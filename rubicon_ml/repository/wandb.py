@@ -62,8 +62,7 @@ class WandBRepository(BaseRepository):
         self.entity = entity
         self.storage_options = storage_options
 
-        self.run = None
-
+        self._active_run = None
         self._current_artifact_bytes = None
         self._current_dataframe = None
         self._current_project = None
@@ -95,6 +94,51 @@ class WandBRepository(BaseRepository):
 
         return wandb
 
+    def _get_active_run(self, project_name: str, experiment_id: str, force_reinit: bool = False):
+        """Get or create an active W&B run for the given project and experiment.
+
+        Caches the run to avoid repeated wandb.init calls. Only re-initializes
+        if the experiment_id changes.
+
+        Parameters
+        ----------
+        project_name : str
+            The W&B project name.
+        experiment_id : str
+            The W&B run ID (experiment ID).
+        force_reinit : bool, optional
+            Whether to force re-initialization of the run, by default False.
+
+        Returns
+        -------
+        wandb.Run
+            An active W&B run.
+        """
+        if self._active_run is None or self._active_run.id != experiment_id or force_reinit:
+            if self._active_run is not None:
+                self._active_run.finish()
+
+            self._active_run = self.wandb.init(project=project_name, id=experiment_id, resume="must")
+
+        return self._active_run
+
+    def _get_api_run(self, project_name: str, experiment_id: str):
+        """Get a fresh API run object with up-to-date data from the server.
+
+        Parameters
+        ----------
+        project_name : str
+            The W&B project name.
+        experiment_id : str
+            The W&B run ID (experiment ID).
+
+        Returns
+        -------
+        wandb.apis.public.Run
+            A W&B API run object with fresh data from the server.
+        """
+        return self.api.run(self._get_wandb_path(project_name, experiment_id))
+
     def _get_wandb_path(self, project_name: str, run_id: Optional[str] = None) -> str:
         """Construct a W&B path for API calls.
 
@@ -120,44 +164,6 @@ class WandBRepository(BaseRepository):
 
         return path
 
-    def _get_wandb_run(self, project_name: str, experiment_id: str):
-        """Get a W&B run object.
-
-        Parameters
-        ----------
-        project_name : str
-            The W&B project name.
-        experiment_id : str
-            The W&B run ID.
-
-        Returns
-        -------
-        wandb.apis.public.Run
-            The W&B run object.
-
-        Raises
-        ------
-        RubiconException
-            If the run is not found.
-        """
-        try:
-            wandb_path = self._get_wandb_path(project_name, experiment_id)
-
-            return self.api.run(wandb_path)
-
-        except Exception as e:
-            raise RubiconException(f"No experiment with id '{experiment_id}' found.") from e
-
-    def _is_active_run(self):
-        """Check if self.run is an active run (from wandb.init) vs an API run.
-
-        Returns
-        -------
-        bool
-            True if self.run is an active run, False if it's an API run or None.
-        """
-        return self.run is not None and not hasattr(self.run, "update")
-
     def _log_to_run(self, data: dict):
         """Log data to W&B run history.
 
@@ -168,12 +174,7 @@ class WandBRepository(BaseRepository):
         data : dict
             The data to log (e.g., {"metric_name": value}).
         """
-        if self._is_active_run():
-            self.wandb.log(data)
-        else:
-            # API runs don't support logging to history after finish
-            # TODO: figure out what to do here
-            pass
+        self.wandb.log(data)
 
     def _set_config_value(self, key: str, value):
         """Set a value in W&B config.
@@ -187,11 +188,7 @@ class WandBRepository(BaseRepository):
         value
             The value to set.
         """
-        if self._is_active_run():
-            self.wandb.config[key] = value
-        else:
-            self.run.config[key] = value
-            self.run.update()
+        self._active_run.config[key] = value
 
     def _read_domain_from_config(self, run, metadata_key: str, domain_class):
         """Reconstruct a domain object from stored metadata.
@@ -213,6 +210,13 @@ class WandBRepository(BaseRepository):
         config = run.config
         if isinstance(config, str):
             config = json.loads(config)
+
+        # If not found in active run's config, try API for fresh data
+        if metadata_key not in config:
+            api_run = self._get_api_run(run.project, run.id)
+            config = api_run.config
+            if isinstance(config, str):
+                config = json.loads(config)
 
         if metadata_key in config:
             # we double serialize domain objects, so we need to deserialize the value again
@@ -246,6 +250,16 @@ class WandBRepository(BaseRepository):
         config = run.config
         if isinstance(config, str):
             config = json.loads(config)
+
+        # Check if any keys match the prefix
+        has_prefix = any(k.startswith(prefix) for k in config.keys())
+
+        # If not found in active run's config, try API for fresh data
+        if not has_prefix:
+            api_run = self._get_api_run(run.project, run.id)
+            config = api_run.config
+            if isinstance(config, str):
+                config = json.loads(config)
 
         objects = []
         for metadata_key in config.keys():
@@ -322,11 +336,11 @@ class WandBRepository(BaseRepository):
             if entity.tags:
                 run_config["tags"] = entity.tags
 
-            self.run = self.wandb.init(**run_config)
+            self._active_run = self.wandb.init(**run_config)
 
-            entity.id = self.run.id  # for accurate W&B retrieval
+            entity.id = self._active_run.id  # for accurate W&B retrieval
             if entity.name is None:
-                entity.name = self.run.name
+                entity.name = self._active_run.name
 
             self._set_config_value("_rubicon_experiment_metadata", json.dumps(entity))
 
@@ -463,6 +477,9 @@ class WandBRepository(BaseRepository):
     def get_experiment(self, project_name: str, experiment_id: str) -> domain.Experiment:
         """Retrieve an experiment (W&B run) from W&B.
 
+        Resumes the W&B run using wandb.init(resume="must") to get an active run
+        that supports full logging capabilities.
+
         Parameters
         ----------
         project_name : str
@@ -475,10 +492,9 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Experiment
             The experiment with ID `experiment_id`.
         """
-        self.run = self._get_wandb_run(project_name, experiment_id)
-
+        run = self._get_active_run(project_name, experiment_id, force_reinit=True)
         result = self._read_domain_from_config(
-            self.run, "_rubicon_experiment_metadata", domain.Experiment
+            run, "_rubicon_experiment_metadata", domain.Experiment
         )
 
         if result is None:
@@ -539,7 +555,7 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Metric
             The metric with name `metric_name`.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
         slugified_name = slugify(metric_name, separator="_")
 
         result = self._read_domain_from_config(run, f"_rubicon_metric_{slugified_name}", domain.Metric)
@@ -566,7 +582,7 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Metric
             The metrics logged to the experiment.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         return self._read_domains_from_config(run, "_rubicon_metric_", domain.Metric)
 
@@ -591,7 +607,7 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Parameter
             The parameter with name `parameter_name`.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
         slugified_name = slugify(parameter_name, separator="_")
 
         result = self._read_domain_from_config(
@@ -620,7 +636,7 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Parameter
             The parameters logged to the experiment.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         return self._read_domains_from_config(run, "_rubicon_parameter_", domain.Parameter)
 
@@ -676,7 +692,7 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Feature
             The features logged to the experiment.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         return self._read_domains_from_config(run, "_rubicon_feature_", domain.Feature)
 
@@ -729,7 +745,7 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Artifact
             The artifact metadata.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         artifact_id, _ = artifact_id.split(":")
         result = self._read_domain_from_config(
@@ -760,7 +776,7 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Artifact
             The artifacts logged to the experiment.
         """
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         return self._read_domains_from_config(run, "_rubicon_artifact_", domain.Artifact)
 
@@ -855,7 +871,7 @@ class WandBRepository(BaseRepository):
         if not experiment_id:
             raise RubiconException("experiment_id is required to retrieve dataframes from W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         result = self._read_domain_from_config(
             run, f"_rubicon_dataframe_{dataframe_id}", domain.Dataframe
@@ -888,7 +904,7 @@ class WandBRepository(BaseRepository):
         if not experiment_id:
             raise RubiconException("experiment_id is required to retrieve dataframes from W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         return self._read_domains_from_config(run, "_rubicon_dataframe_", domain.Dataframe)
 
@@ -923,12 +939,13 @@ class WandBRepository(BaseRepository):
         if not experiment_id:
             raise RubiconException("experiment_id is required to retrieve dataframes from W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        # Use API run for logged_artifacts() - active runs don't have this method
+        api_run = self._get_api_run(project_name, experiment_id)
         artifact_name = f"dataframe-{dataframe_id}"
 
         try:
             artifact = None
-            for logged_artifact in run.logged_artifacts():
+            for logged_artifact in api_run.logged_artifacts():
                 if logged_artifact.name.startswith(artifact_name):
                     artifact = logged_artifact
                     break
@@ -1026,7 +1043,7 @@ class WandBRepository(BaseRepository):
         if experiment_id is None:
             raise RubiconException("experiment_id is required to add tags in W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         # Use W&B's native tags for Experiment-level tags
         if entity_type == "Experiment":
@@ -1038,8 +1055,6 @@ class WandBRepository(BaseRepository):
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
         key = f"{key_prefix}{uuid4()}"
         run.config[key] = json.dumps({"added_tags": tags, "_timestamp": time.time()})
-
-        run.update()
 
     def remove_tags(
         self,
@@ -1070,7 +1085,7 @@ class WandBRepository(BaseRepository):
         if experiment_id is None:
             raise RubiconException("experiment_id is required to remove tags in W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
 
         # Use W&B's native tags for Experiment-level tags
         if entity_type == "Experiment":
@@ -1082,8 +1097,6 @@ class WandBRepository(BaseRepository):
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
         key = f"{key_prefix}{uuid4()}"
         run.config[key] = json.dumps({"removed_tags": tags, "_timestamp": time.time()})
-
-        run.update()
 
     def get_tags(
         self,
@@ -1114,12 +1127,22 @@ class WandBRepository(BaseRepository):
         if experiment_id is None:
             raise RubiconException("experiment_id is required to get tags in W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
 
         config = run.config
         if isinstance(config, str):
             config = json.loads(config)
+
+        # Check if any keys match the prefix
+        has_prefix = any(k.startswith(key_prefix) for k in config.keys())
+
+        # If not found in active run's config, try API for fresh data
+        if not has_prefix:
+            api_run = self._get_api_run(project_name, experiment_id)
+            config = api_run.config
+            if isinstance(config, str):
+                config = json.loads(config)
 
         tags_data = []
         for key, value in config.items():
@@ -1168,12 +1191,11 @@ class WandBRepository(BaseRepository):
         if experiment_id is None:
             raise RubiconException("experiment_id is required to add comments in W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
         key = f"{key_prefix}{uuid4()}"
 
         run.config[key] = json.dumps({"added_comments": comments, "_timestamp": time.time()})
-        run.update()
 
     def remove_comments(
         self,
@@ -1201,12 +1223,11 @@ class WandBRepository(BaseRepository):
         if experiment_id is None:
             raise RubiconException("experiment_id is required to remove comments in W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
         key = f"{key_prefix}{uuid4()}"
 
         run.config[key] = json.dumps({"removed_comments": comments, "_timestamp": time.time()})
-        run.update()
 
     def get_comments(
         self,
@@ -1237,12 +1258,22 @@ class WandBRepository(BaseRepository):
         if experiment_id is None:
             raise RubiconException("experiment_id is required to get comments in W&B.")
 
-        run = self._get_wandb_run(project_name, experiment_id)
+        run = self._get_active_run(project_name, experiment_id)
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "comments")
 
         config = run.config
         if isinstance(config, str):
             config = json.loads(config)
+
+        # Check if any keys match the prefix
+        has_prefix = any(k.startswith(key_prefix) for k in config.keys())
+
+        # If not found in active run's config, try API for fresh data
+        if not has_prefix:
+            api_run = self._get_api_run(project_name, experiment_id)
+            config = api_run.config
+            if isinstance(config, str):
+                config = json.loads(config)
 
         comments_data = []
         for key, value in config.items():
