@@ -647,7 +647,7 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         )
 
         if repository_class == WandBRepository:
-            repository.run.finish()
+            repository._active_run.finish()
 
         experiment = repository.get_experiment(
             domain_project.name,
@@ -692,7 +692,7 @@ def test_read_write_feature_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+            repository._active_run.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_feature(
@@ -709,8 +709,8 @@ def test_read_write_feature_regression(
             entity_type="Feature",
         )
 
-        if not is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+        if repository_class == WandBRepository:
+            repository._active_run.finish()
 
         feature = repository.get_feature(
             domain_project.name,
@@ -726,6 +726,9 @@ def test_read_write_feature_regression(
             entity_identifier=domain_feature.name,
             entity_type="Feature",
         )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
@@ -756,7 +759,7 @@ def test_read_write_metric_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+            repository._active_run.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_metric(
@@ -773,8 +776,8 @@ def test_read_write_metric_regression(
             entity_type="Metric",
         )
 
-        if not is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+        if repository_class == WandBRepository:
+            repository._active_run.finish()
 
         metric = repository.get_metric(
             domain_project.name,
@@ -790,6 +793,9 @@ def test_read_write_metric_regression(
             entity_identifier=domain_metric.name,
             entity_type="Metric",
         )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
@@ -820,7 +826,7 @@ def test_read_write_parameter_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+            repository._active_run.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_parameter(
@@ -837,8 +843,8 @@ def test_read_write_parameter_regression(
             entity_type="Parameter",
         )
 
-        if not is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+        if repository_class == WandBRepository:
+            repository._active_run.finish()
 
         parameter = repository.get_parameter(
             domain_project.name,
@@ -854,6 +860,9 @@ def test_read_write_parameter_regression(
             entity_identifier=domain_parameter.name,
             entity_type="Parameter",
         )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
@@ -951,7 +960,7 @@ def test_read_write_artifact_experiment_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+            repository._active_run.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_artifact(
@@ -969,8 +978,8 @@ def test_read_write_artifact_experiment_regression(
             entity_type="Artifact",
         )
 
-        if not is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+        if repository_class == WandBRepository:
+            repository._active_run.finish()
 
         artifact_experiment = repository.get_artifact_metadata(
             domain_project.name,
@@ -992,6 +1001,9 @@ def test_read_write_artifact_experiment_regression(
             entity_identifier=domain_artifact.id,
             entity_type="Artifact",
         )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
@@ -1089,7 +1101,7 @@ def test_read_write_dataframe_experiment_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+            repository._active_run.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_dataframe(
@@ -1107,8 +1119,8 @@ def test_read_write_dataframe_experiment_regression(
             entity_type="Dataframe",
         )
 
-        if not is_existing_experiment and repository_class == WandBRepository:
-            repository.run.finish()
+        if repository_class == WandBRepository:
+            repository._active_run.finish()
 
         dataframe_experiment = repository.get_dataframe_metadata(
             domain_project.name,
@@ -1130,6 +1142,9 @@ def test_read_write_dataframe_experiment_regression(
             entity_identifier=domain_dataframe.id,
             entity_type="Dataframe",
         )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
 
 
 def _test_write_additional_tags_and_comments(
