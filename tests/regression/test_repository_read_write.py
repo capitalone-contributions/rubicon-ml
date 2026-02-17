@@ -665,11 +665,13 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_feature_regression(
     experiment_json,
     feature_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the feature domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -688,6 +690,11 @@ def test_read_write_feature_regression(
         domain_feature = domain.Feature(**feature_json)
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
+
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.run.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
         repository.create_feature(
             domain_feature,
             domain_project.name,
@@ -702,7 +709,7 @@ def test_read_write_feature_regression(
             entity_type="Feature",
         )
 
-        if repository_class == WandBRepository:
+        if not is_existing_experiment and repository_class == WandBRepository:
             repository.run.finish()
 
         feature = repository.get_feature(
@@ -722,11 +729,13 @@ def test_read_write_feature_regression(
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_metric_regression(
     experiment_json,
     metric_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the metric domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -745,6 +754,11 @@ def test_read_write_metric_regression(
         domain_metric = domain.Metric(**metric_json)
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
+
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.run.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
         repository.create_metric(
             domain_metric,
             domain_project.name,
@@ -759,7 +773,7 @@ def test_read_write_metric_regression(
             entity_type="Metric",
         )
 
-        if repository_class == WandBRepository:
+        if not is_existing_experiment and repository_class == WandBRepository:
             repository.run.finish()
 
         metric = repository.get_metric(
@@ -779,11 +793,13 @@ def test_read_write_metric_regression(
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_parameter_regression(
     experiment_json,
     parameter_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the parameter domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -802,6 +818,11 @@ def test_read_write_parameter_regression(
         domain_parameter = domain.Parameter(**parameter_json)
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
+
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.run.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
         repository.create_parameter(
             domain_parameter,
             domain_project.name,
@@ -816,7 +837,7 @@ def test_read_write_parameter_regression(
             entity_type="Parameter",
         )
 
-        if repository_class == WandBRepository:
+        if not is_existing_experiment and repository_class == WandBRepository:
             repository.run.finish()
 
         parameter = repository.get_parameter(
@@ -903,11 +924,13 @@ def test_read_write_artifact_project_regression(
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_artifact_experiment_regression(
     artifact_experiment_json,
     experiment_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the artifact (experiment) domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -926,6 +949,11 @@ def test_read_write_artifact_experiment_regression(
         domain_artifact = domain.Artifact(**artifact_experiment_json)
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
+
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.run.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
         repository.create_artifact(
             domain_artifact,
             ARTIFACT_BINARY,
@@ -941,7 +969,7 @@ def test_read_write_artifact_experiment_regression(
             entity_type="Artifact",
         )
 
-        if repository_class == WandBRepository:
+        if not is_existing_experiment and repository_class == WandBRepository:
             repository.run.finish()
 
         artifact_experiment = repository.get_artifact_metadata(
@@ -1034,11 +1062,13 @@ def test_read_write_dataframe_project_regression(
 
 
 @pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_dataframe_experiment_regression(
     dataframe_experiment_json,
     experiment_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the dataframe (experiment) domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -1057,6 +1087,11 @@ def test_read_write_dataframe_experiment_regression(
         domain_dataframe = domain.Dataframe(**dataframe_experiment_json)
         repository.create_project(domain_project)
         repository.create_experiment(domain_experiment)
+
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.run.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
         repository.create_dataframe(
             domain_dataframe,
             DATAFRAME,
@@ -1072,7 +1107,7 @@ def test_read_write_dataframe_experiment_regression(
             entity_type="Dataframe",
         )
 
-        if repository_class == WandBRepository:
+        if not is_existing_experiment and repository_class == WandBRepository:
             repository.run.finish()
 
         dataframe_experiment = repository.get_dataframe_metadata(

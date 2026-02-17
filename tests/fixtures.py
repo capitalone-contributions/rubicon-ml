@@ -599,7 +599,6 @@ def experiment_parameters():
         "commit_hash": "abcde01",
         "description": "test experiment description",
         "model_name": "test model",
-        "name": "test experiment",
         "tags": ["tag_a", "tag_b"],
     }
 
@@ -610,6 +609,7 @@ def experiment_json(experiment_parameters):
         **experiment_parameters,
         "created_at": datetime.datetime(2024, 1, 1),
         "id": "69e374cd-220b-4cda-9608-52277b38a976",
+        "name": None,
         "project_name": "rubicon-ml regression test project",
         "training_metadata": [["training", "metadata"]],
     }

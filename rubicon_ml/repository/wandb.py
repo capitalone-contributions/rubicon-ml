@@ -144,21 +144,54 @@ class WandBRepository(BaseRepository):
             wandb_path = self._get_wandb_path(project_name, experiment_id)
 
             return self.api.run(wandb_path)
+
         except Exception as e:
             raise RubiconException(f"No experiment with id '{experiment_id}' found.") from e
 
-    def _persist_domain_to_config(self, key: str, domain_obj):
-        """Store a domain object's metadata in W&B config.
+    def _is_active_run(self):
+        """Check if self.run is an active run (from wandb.init) vs an API run.
+
+        Returns
+        -------
+        bool
+            True if self.run is an active run, False if it's an API run or None.
+        """
+        return self.run is not None and not hasattr(self.run, "update")
+
+    def _log_to_run(self, data: dict):
+        """Log data to W&B run history.
+
+        Handles both active runs and API runs.
+
+        Parameters
+        ----------
+        data : dict
+            The data to log (e.g., {"metric_name": value}).
+        """
+        if self._is_active_run():
+            self.wandb.log(data)
+        else:
+            # API runs don't support logging to history after finish
+            # TODO: figure out what to do here
+            pass
+
+    def _set_config_value(self, key: str, value):
+        """Set a value in W&B config.
+
+        Handles both active runs and API runs.
 
         Parameters
         ----------
         key : str
-            The config key to store metadata under.
-        domain_obj : domain object
-            The domain object to serialize and store.
+            The config key.
+        value
+            The value to set.
         """
-        # serialize domain object ourselves to leverage rubicon-ml's custom serializers
-        self.wandb.config.update({key: json.dumps(domain_obj)})
+        if self._is_active_run():
+            self.wandb.config[key] = value
+        else:
+            self.run.config[key] = value
+            self.run.update()
 
     def _read_domain_from_config(self, run, metadata_key: str, domain_class):
         """Reconstruct a domain object from stored metadata.
@@ -279,7 +312,13 @@ class WandBRepository(BaseRepository):
             self._current_project = entity
 
         elif isinstance(entity, domain.Experiment):
-            run_config = {"project": self._current_project.name}
+            run_config = {
+                "project": self._current_project.name,
+                "reinit": "finish_previous",
+            }
+
+            if entity.name:
+                run_config["name"] = entity.name
             if entity.tags:
                 run_config["tags"] = entity.tags
 
@@ -289,24 +328,24 @@ class WandBRepository(BaseRepository):
             if entity.name is None:
                 entity.name = self.run.name
 
-            self._persist_domain_to_config("_rubicon_experiment_metadata", entity)
+            self._set_config_value("_rubicon_experiment_metadata", json.dumps(entity))
 
         elif isinstance(entity, domain.Feature):
             entity_name = slugify(entity.name, separator="_")
-            self._persist_domain_to_config(f"_rubicon_feature_{entity_name}", entity)
+            self._set_config_value(f"_rubicon_feature_{entity_name}", json.dumps(entity))
 
             if entity.importance is not None:
-                self.wandb.log({f"{entity_name}_importance": entity.importance})
+                self._log_to_run({f"{entity_name}_importance": entity.importance})
 
         elif isinstance(entity, domain.Metric):
             entity_name = slugify(entity.name, separator="_")
-            self.wandb.log({entity.name: entity.value})
-            self._persist_domain_to_config(f"_rubicon_metric_{entity_name}", entity)
+            self._log_to_run({entity.name: entity.value})
+            self._set_config_value(f"_rubicon_metric_{entity_name}", json.dumps(entity))
 
         elif isinstance(entity, domain.Parameter):
             entity_name = slugify(entity.name, separator="_")
-            self.wandb.config[entity.name] = entity.value
-            self._persist_domain_to_config(f"_rubicon_parameter_{entity_name}", entity)
+            self._set_config_value(entity.name, entity.value)
+            self._set_config_value(f"_rubicon_parameter_{entity_name}", json.dumps(entity))
 
         elif isinstance(entity, domain.Artifact):
             with tempfile.NamedTemporaryFile(delete=False) as file:
@@ -323,7 +362,7 @@ class WandBRepository(BaseRepository):
                 entity_id = entity.id
                 entity.id = f"{entity.id}:{entity.name}"  # for accurate W&B retrieval
 
-                self._persist_domain_to_config(f"_rubicon_artifact_{entity_id}", entity)
+                self._set_config_value(f"_rubicon_artifact_{entity_id}", json.dumps(entity))
             finally:
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
@@ -351,7 +390,7 @@ class WandBRepository(BaseRepository):
             self.wandb.log({entity.name or entity.id: dataframe_table})
 
             # 3. Store complete dataframe metadata for reconstruction
-            self._persist_domain_to_config(f"_rubicon_dataframe_{entity.id}", entity)
+            self._set_config_value(f"_rubicon_dataframe_{entity.id}", json.dumps(entity))
 
     def _read_bytes(self, path, err_msg=None):
         """W&B backend doesn't use filesystem paths."""

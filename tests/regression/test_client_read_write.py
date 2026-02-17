@@ -89,7 +89,8 @@ def test_read_write_experiment_client_regression(experiment_parameters, project_
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_feature_client_regression(feature_parameters, experiment_parameters, project_parameters, persistence):
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
+def test_read_write_feature_client_regression(feature_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
     """Tests that `rubicon_ml` client can read the feature entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -101,13 +102,17 @@ def test_read_write_feature_client_regression(feature_parameters, experiment_par
     with temp_dir_context as temp_dir_name:
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
-        project = rubicon.create_project(**project_parameters)
+        project = rubicon.get_or_create_project(**project_parameters)
         experiment = project.log_experiment(**experiment_parameters)
-        feature = experiment.log_feature(**feature_parameters)
 
+        if is_existing_experiment and persistence == "wandb":
+            rubicon.repository.run.finish()
+            experiment = project.experiment(id=experiment.id)
+
+        feature = experiment.log_feature(**feature_parameters)
         _write_additional_tags_and_comments(feature)
 
-        if persistence == "wandb":
+        if not is_existing_experiment and persistence == "wandb":
             rubicon.repository.run.finish()
 
         retrieved_feature = experiment.feature(name=feature.name)
@@ -117,7 +122,8 @@ def test_read_write_feature_client_regression(feature_parameters, experiment_par
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_metric_client_regression(metric_parameters, experiment_parameters, project_parameters, persistence):
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
+def test_read_write_metric_client_regression(metric_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
     """Tests that `rubicon_ml` client can read the metric entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -129,13 +135,18 @@ def test_read_write_metric_client_regression(metric_parameters, experiment_param
     with temp_dir_context as temp_dir_name:
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
-        project = rubicon.create_project(**project_parameters)
+        project = rubicon.get_or_create_project(**project_parameters)
         experiment = project.log_experiment(**experiment_parameters)
-        metric = experiment.log_metric(**metric_parameters)
 
+        if is_existing_experiment and persistence == "wandb":
+            rubicon.repository.run.finish()
+
+            experiment = project.experiment(id=experiment.id)
+
+        metric = experiment.log_metric(**metric_parameters)
         _write_additional_tags_and_comments(metric)
 
-        if persistence == "wandb":
+        if not is_existing_experiment and persistence == "wandb":
             rubicon.repository.run.finish()
 
         retrieved_metric = experiment.metric(name=metric.name)
@@ -145,7 +156,8 @@ def test_read_write_metric_client_regression(metric_parameters, experiment_param
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_parameter_client_regression(parameter_parameters, experiment_parameters, project_parameters, persistence):
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
+def test_read_write_parameter_client_regression(parameter_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
     """Tests that `rubicon_ml` client can read the parameter entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -157,13 +169,17 @@ def test_read_write_parameter_client_regression(parameter_parameters, experiment
     with temp_dir_context as temp_dir_name:
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
-        project = rubicon.create_project(**project_parameters)
+        project = rubicon.get_or_create_project(**project_parameters)
         experiment = project.log_experiment(**experiment_parameters)
-        parameter = experiment.log_parameter(**parameter_parameters)
 
+        if is_existing_experiment and persistence == "wandb":
+            rubicon.repository.run.finish()
+            experiment = project.experiment(id=experiment.id)
+
+        parameter = experiment.log_parameter(**parameter_parameters)
         _write_additional_tags_and_comments(parameter)
 
-        if persistence == "wandb":
+        if not is_existing_experiment and persistence == "wandb":
             rubicon.repository.run.finish()
 
         retrieved_parameter = experiment.parameter(name=parameter.name)
@@ -209,7 +225,8 @@ def test_read_write_artifact_project_client_regression(artifact_parameters, proj
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_artifact_experiment_client_regression(artifact_parameters, experiment_parameters, project_parameters, persistence):
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
+def test_read_write_artifact_experiment_client_regression(artifact_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
     """Tests that `rubicon_ml` client can read the artifact (experiment) entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -221,13 +238,17 @@ def test_read_write_artifact_experiment_client_regression(artifact_parameters, e
     with temp_dir_context as temp_dir_name:
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
-        project = rubicon.create_project(**project_parameters)
+        project = rubicon.get_or_create_project(**project_parameters)
         experiment = project.log_experiment(**experiment_parameters)
-        artifact = experiment.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
 
+        if is_existing_experiment and persistence == "wandb":
+            rubicon.repository.run.finish()
+            experiment = project.experiment(id=experiment.id)
+
+        artifact = experiment.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
         _write_additional_tags_and_comments(artifact)
 
-        if persistence == "wandb":
+        if not is_existing_experiment and persistence == "wandb":
             rubicon.repository.run.finish()
 
         retrieved_artifact = experiment.artifact(name=artifact.name)
@@ -274,7 +295,8 @@ def test_read_write_dataframe_project_client_regression(dataframe_parameters, pr
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_dataframe_experiment_client_regression(dataframe_parameters, experiment_parameters, project_parameters, persistence):
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
+def test_read_write_dataframe_experiment_client_regression(dataframe_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
     """Tests that `rubicon_ml` client can read the dataframe (experiment) entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -286,13 +308,17 @@ def test_read_write_dataframe_experiment_client_regression(dataframe_parameters,
     with temp_dir_context as temp_dir_name:
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         rubicon = Rubicon(persistence=persistence, root_dir=root_dir)
-        project = rubicon.create_project(**project_parameters)
+        project = rubicon.get_or_create_project(**project_parameters)
         experiment = project.log_experiment(**experiment_parameters)
-        dataframe = experiment.log_dataframe(df=DATAFRAME, **dataframe_parameters)
 
+        if is_existing_experiment and persistence == "wandb":
+            rubicon.repository.run.finish()
+            experiment = project.experiment(id=experiment.id)
+
+        dataframe = experiment.log_dataframe(df=DATAFRAME, **dataframe_parameters)
         _write_additional_tags_and_comments(dataframe)
 
-        if persistence == "wandb":
+        if not is_existing_experiment and persistence == "wandb":
             rubicon.repository.run.finish()
 
         retrieved_dataframe = experiment.dataframe(name=dataframe.name)
