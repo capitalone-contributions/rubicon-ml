@@ -156,7 +156,7 @@ markers = [
     "wandb: tests that connect to Weights & Biases",
     "write_files: tests that physically write files to local and S3 filesystems",
 ]
-addopts = "--cov=./rubicon_ml --cov-report=term-missing --cov-fail-under=90 -m='not write_files' -m 'not wandb'"
+addopts = "--cov=./rubicon_ml --cov-report=term-missing --cov-fail-under=90 -m='not write_files and not wandb'"
 minversion = "3.2"
 xfail_strict = true
 
