@@ -15,7 +15,7 @@ class DomainJSONEncoder(json.JSONEncoder):
         within dataclasses, we need to leverage asdict()
         """
         if isinstance(obj, datetime):
-            return {"_type": "datetime", "value": obj.strftime("%Y-%m-%d %H:%M:%S.%f")}
+            return {"_type": "datetime", "value": obj.isoformat()}
         elif isinstance(obj, date):
             return {"_type": "date", "value": obj.isoformat()}
         elif isinstance(obj, set):
@@ -41,7 +41,10 @@ class DomainJSONDecoder(json.JSONDecoder):
 
     def object_hook(self, obj):
         if obj.get("_type") == "datetime":
-            return datetime.strptime(obj.get("value"), "%Y-%m-%d %H:%M:%S.%f")
+            try:
+                return datetime.fromisoformat(obj.get("value"))
+            except ValueError:
+                return datetime.strptime(obj.get("value"), "%Y-%m-%d %H:%M:%S.%f")
         elif obj.get("_type") == "date":
             return date.fromisoformat(obj.get("value"))
         elif obj.get("_type") == "set":
