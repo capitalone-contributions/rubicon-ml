@@ -3,7 +3,7 @@ import os
 import tempfile
 import time
 from json import JSONDecodeError
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 import pandas as pd
 
@@ -117,7 +117,9 @@ class WandBRepository(BaseRepository):
             if self._active_run is not None:
                 self._active_run.finish()
 
-            self._active_run = self.wandb.init(project=project_name, id=experiment_id, resume="must")
+            self._active_run = self.wandb.init(
+                project=project_name, id=experiment_id, resume="must"
+            )
 
         return self._active_run
 
@@ -163,7 +165,7 @@ class WandBRepository(BaseRepository):
 
         return path
 
-    def _log_to_run(self, data: dict):
+    def _log_to_run(self, data: Dict[str, Any]):
         """Log data to W&B run history.
 
         Handles both active runs and API runs.
@@ -175,7 +177,7 @@ class WandBRepository(BaseRepository):
         """
         self.wandb.log(data)
 
-    def _set_config_value(self, key: str, value):
+    def _set_config_value(self, key: str, value: Any):
         """Set a value in W&B config.
 
         Handles both active runs and API runs.
@@ -189,7 +191,9 @@ class WandBRepository(BaseRepository):
         """
         self._active_run.config[key] = value
 
-    def _read_domain_from_config(self, run, metadata_key: str, domain_class):
+    def _read_domain_from_config(
+        self, run, metadata_key: str, domain_class: Type[domain.DomainsVar]
+    ) -> Optional[domain.DomainsVar]:
         """Reconstruct a domain object from stored metadata.
 
         Parameters
@@ -229,7 +233,9 @@ class WandBRepository(BaseRepository):
 
         return None
 
-    def _read_domains_from_config(self, run, prefix: str, domain_class):
+    def _read_domains_from_config(
+        self, run, prefix: str, domain_class: Type[domain.DomainsVar]
+    ) -> List[domain.DomainsVar]:
         """Reconstruct a list of domain objects from stored metadata.
 
         Parameters
@@ -276,45 +282,45 @@ class WandBRepository(BaseRepository):
 
     # --- Filesystem Helpers ---
 
-    def _cat(self, path):
+    def _cat(self, path: str):
         """W&B backend doesn't use filesystem paths."""
         raise RubiconException(
             "The W&B backend doesn't support direct file access. "
             "Use the specific get_* methods instead."
         )
 
-    def _cat_paths(self, metadata_paths):
+    def _cat_paths(self, metadata_paths: List[str]):
         """W&B backend doesn't use filesystem paths."""
         raise RubiconException(
             "The W&B backend doesn't support direct file access. "
             "Use the specific get_* methods instead."
         )
 
-    def _exists(self, path):
+    def _exists(self, path: str) -> bool:
         """W&B backend doesn't use filesystem paths."""
         return False
 
-    def _glob(self, globstring):
+    def _glob(self, globstring: str) -> List:
         """W&B backend doesn't use filesystem paths."""
         return []
 
-    def _ls_directories_only(self, path):
+    def _ls_directories_only(self, path: str):
         """W&B backend doesn't use filesystem paths."""
         raise RubiconException(
             "The W&B backend doesn't support direct file access. "
             "Use the specific get_* methods instead."
         )
 
-    def _mkdir(self, dirpath):
+    def _mkdir(self, dirpath: str) -> bool:
         return True
 
-    def _persist_bytes(self, bytes_data, path):
+    def _persist_bytes(self, bytes_data: bytes, path: str):
         self._current_artifact_bytes = bytes_data
 
-    def _persist_dataframe(self, df, path):
+    def _persist_dataframe(self, df: pd.DataFrame, path: str):
         self._current_dataframe = df
 
-    def _persist_domain(self, entity, path):
+    def _persist_domain(self, entity: Any, path: str):
         """Persist a domain object to W&B.
 
         This method stores domain objects in two ways:
@@ -405,21 +411,21 @@ class WandBRepository(BaseRepository):
             # 3. Store complete dataframe metadata for reconstruction
             self._set_config_value(f"_rubicon_dataframe_{entity.id}", json.dumps(entity))
 
-    def _read_bytes(self, path, err_msg=None):
+    def _read_bytes(self, path: str, err_msg: Optional[str] = None) -> bytes:
         """W&B backend doesn't use filesystem paths."""
         raise RubiconException(
             "The W&B backend doesn't support direct file access. "
             "Use get_artifact_data() or get_dataframe_data() instead."
         )
 
-    def _read_domain(self, path, err_msg=None):
+    def _read_domain(self, path: str, err_msg: Optional[str] = None) -> domain.DomainsVar:
         """W&B backend doesn't use filesystem paths."""
         raise RubiconException(
             "The W&B backend doesn't support direct file access. "
             "Use the specific get_* methods instead."
         )
 
-    def _rm(self, path):
+    def _rm(self, path: str):
         """W&B backend doesn't support deletion."""
         raise RubiconException(
             "The W&B backend doesn't support deletion through the API. "
@@ -557,7 +563,9 @@ class WandBRepository(BaseRepository):
         run = self._get_active_run(project_name, experiment_id)
         slugified_name = slugify(metric_name, separator="_")
 
-        result = self._read_domain_from_config(run, f"_rubicon_metric_{slugified_name}", domain.Metric)
+        result = self._read_domain_from_config(
+            run, f"_rubicon_metric_{slugified_name}", domain.Metric
+        )
 
         if result is None:
             raise RubiconException(
@@ -697,7 +705,13 @@ class WandBRepository(BaseRepository):
 
     # -------- Artifacts --------
 
-    def create_artifact(self, artifact, data, project_name, experiment_id=None):
+    def create_artifact(
+        self,
+        artifact: domain.Artifact,
+        data: bytes,
+        project_name: str,
+        experiment_id: Optional[str] = None,
+    ):
         """Persist an artifact to W&B.
 
         Parameters
@@ -818,7 +832,13 @@ class WandBRepository(BaseRepository):
 
     # -------- Dataframes --------
 
-    def create_dataframe(self, dataframe, data, project_name, experiment_id=None):
+    def create_dataframe(
+        self,
+        dataframe: domain.Dataframe,
+        data: Any,
+        project_name: str,
+        experiment_id: Optional[str] = None,
+    ):
         """Persist a dataframe to W&B.
 
         Parameters

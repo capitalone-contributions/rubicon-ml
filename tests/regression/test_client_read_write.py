@@ -62,7 +62,9 @@ def test_read_write_project_client_regression(project_parameters, persistence):
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_experiment_client_regression(experiment_parameters, project_parameters, persistence):
+def test_read_write_experiment_client_regression(
+    experiment_parameters, project_parameters, persistence
+):
     """Tests that `rubicon_ml` client can read the experiment entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -84,13 +86,21 @@ def test_read_write_experiment_client_regression(experiment_parameters, project_
 
         retrieved_experiment = project.experiment(id=experiment.id)
 
-        assert _domain_equals_excluding_tags_comments(retrieved_experiment._domain, experiment._domain)
+        assert _domain_equals_excluding_tags_comments(
+            retrieved_experiment._domain, experiment._domain
+        )
         assert _test_read_write_additional_tags_and_comments(retrieved_experiment)
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
 @pytest.mark.parametrize("is_existing_experiment", [True, False])
-def test_read_write_feature_client_regression(feature_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
+def test_read_write_feature_client_regression(
+    feature_parameters,
+    experiment_parameters,
+    project_parameters,
+    persistence,
+    is_existing_experiment,
+):
     """Tests that `rubicon_ml` client can read the feature entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -123,7 +133,13 @@ def test_read_write_feature_client_regression(feature_parameters, experiment_par
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
 @pytest.mark.parametrize("is_existing_experiment", [True, False])
-def test_read_write_metric_client_regression(metric_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
+def test_read_write_metric_client_regression(
+    metric_parameters,
+    experiment_parameters,
+    project_parameters,
+    persistence,
+    is_existing_experiment,
+):
     """Tests that `rubicon_ml` client can read the metric entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -157,7 +173,13 @@ def test_read_write_metric_client_regression(metric_parameters, experiment_param
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
 @pytest.mark.parametrize("is_existing_experiment", [True, False])
-def test_read_write_parameter_client_regression(parameter_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
+def test_read_write_parameter_client_regression(
+    parameter_parameters,
+    experiment_parameters,
+    project_parameters,
+    persistence,
+    is_existing_experiment,
+):
     """Tests that `rubicon_ml` client can read the parameter entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -184,12 +206,16 @@ def test_read_write_parameter_client_regression(parameter_parameters, experiment
 
         retrieved_parameter = experiment.parameter(name=parameter.name)
 
-        assert _domain_equals_excluding_tags_comments(retrieved_parameter._domain, parameter._domain)
+        assert _domain_equals_excluding_tags_comments(
+            retrieved_parameter._domain, parameter._domain
+        )
         assert _test_read_write_additional_tags_and_comments(retrieved_parameter)
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_artifact_project_client_regression(artifact_parameters, project_parameters, persistence):
+def test_read_write_artifact_project_client_regression(
+    artifact_parameters, project_parameters, persistence
+):
     """Tests that `rubicon_ml` client can read the artifact (project) entity that it wrote.
 
     For wandb persistence, this test verifies that project-level artifacts raise
@@ -226,7 +252,13 @@ def test_read_write_artifact_project_client_regression(artifact_parameters, proj
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
 @pytest.mark.parametrize("is_existing_experiment", [True, False])
-def test_read_write_artifact_experiment_client_regression(artifact_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
+def test_read_write_artifact_experiment_client_regression(
+    artifact_parameters,
+    experiment_parameters,
+    project_parameters,
+    persistence,
+    is_existing_experiment,
+):
     """Tests that `rubicon_ml` client can read the artifact (experiment) entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -259,7 +291,9 @@ def test_read_write_artifact_experiment_client_regression(artifact_parameters, e
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
-def test_read_write_dataframe_project_client_regression(dataframe_parameters, project_parameters, persistence):
+def test_read_write_dataframe_project_client_regression(
+    dataframe_parameters, project_parameters, persistence
+):
     """Tests that `rubicon_ml` client can read the dataframe (project) entity that it wrote.
 
     For wandb persistence, this test verifies that project-level dataframes raise
@@ -289,14 +323,22 @@ def test_read_write_dataframe_project_client_regression(dataframe_parameters, pr
 
         retrieved_dataframe = project.dataframe(name=dataframe.name)
 
-        assert _domain_equals_excluding_tags_comments(retrieved_dataframe._domain, dataframe._domain)
+        assert _domain_equals_excluding_tags_comments(
+            retrieved_dataframe._domain, dataframe._domain
+        )
         assert retrieved_dataframe.get_data().equals(DATAFRAME)
         assert _test_read_write_additional_tags_and_comments(retrieved_dataframe)
 
 
 @pytest.mark.parametrize("persistence", CLIENTS_TO_TEST)
 @pytest.mark.parametrize("is_existing_experiment", [True, False])
-def test_read_write_dataframe_experiment_client_regression(dataframe_parameters, experiment_parameters, project_parameters, persistence, is_existing_experiment):
+def test_read_write_dataframe_experiment_client_regression(
+    dataframe_parameters,
+    experiment_parameters,
+    project_parameters,
+    persistence,
+    is_existing_experiment,
+):
     """Tests that `rubicon_ml` client can read the dataframe (experiment) entity that it wrote."""
     if persistence == "filesystem":
         temp_dir_context = tempfile.TemporaryDirectory()
@@ -323,6 +365,8 @@ def test_read_write_dataframe_experiment_client_regression(dataframe_parameters,
 
         retrieved_dataframe = experiment.dataframe(name=dataframe.name)
 
-        assert _domain_equals_excluding_tags_comments(retrieved_dataframe._domain, dataframe._domain)
+        assert _domain_equals_excluding_tags_comments(
+            retrieved_dataframe._domain, dataframe._domain
+        )
         assert retrieved_dataframe.get_data().equals(DATAFRAME)
         assert _test_read_write_additional_tags_and_comments(retrieved_dataframe)

@@ -543,9 +543,7 @@ def test_read_dataframe_experiment_regression(
             assert dataframe_experiment_data.equals(DATAFRAME)
 
 
-def _write_additional_tags_and_comments(
-    repository, project_name, **entity_identification_kwargs
-):
+def _write_additional_tags_and_comments(repository, project_name, **entity_identification_kwargs):
     repository.add_tags(
         project_name,
         TAGS_TO_ADD,

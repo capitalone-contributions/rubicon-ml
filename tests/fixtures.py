@@ -602,6 +602,7 @@ def experiment_parameters():
         "tags": ["tag_a", "tag_b"],
     }
 
+
 @pytest.fixture
 def experiment_json(experiment_parameters):
     """JSON representation of an experiment."""
