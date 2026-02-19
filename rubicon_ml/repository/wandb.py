@@ -33,21 +33,24 @@ class WandBRepository(BaseRepository):
 
     Parameters
     ----------
-    entity : str, optional
-        The W&B entity (username or team) to use for reading data.
-        If not provided, will use the default entity from wandb config.
+    entity : str or none, optional
+        The W&B entity (username or team) to read from and write to. Defaults to none,
+        leveraging the default entity from W&B config.
     root_dir : str, optional
-        NOT USED. Required for backwards compatibility. Will be removed in a future version.
+        DEPRECATED. Unused. Required for `BaseRepository` compatibility.
+    wandb_init_kwargs : dict or none, optional
+        Additional keyword arguments to be passed to `wandb.init` calls. Defaults to none.
     warn : bool, optional
         Whether to warn about the experimental nature of this repository. Defaults to true.
     **storage_options
-        Additional options passed to W&B API initialization.
+        Additional keyword arguments to be passed to `wandb.API` initialization.
     """
 
     def __init__(
         self,
         entity: Optional[str] = None,
         root_dir: str = "WANDB",
+        wandb_init_kwargs: Optional[Dict[str, Any]] = None,
         warn: bool = True,
         **storage_options,
     ):
@@ -61,6 +64,7 @@ class WandBRepository(BaseRepository):
 
         self.entity = entity
         self.storage_options = storage_options
+        self.wandb_init_kwargs = wandb_init_kwargs
 
         self._active_run = None
         self._current_artifact_bytes = None
@@ -117,9 +121,14 @@ class WandBRepository(BaseRepository):
             if self._active_run is not None:
                 self._active_run.finish()
 
-            self._active_run = self.wandb.init(
-                project=project_name, id=experiment_id, resume="must"
-            )
+            run_config = {
+                "project": project_name,
+                "id": experiment_id,
+                "resume": "must",
+            }
+            run_config.update(self.wandb_init_kwargs)
+
+            self._active_run = self.wandb.init(**run_config)
 
         return self._active_run
 
@@ -335,6 +344,7 @@ class WandBRepository(BaseRepository):
                 "project": self._current_project.name,
                 "reinit": "finish_previous",
             }
+            run_config.update(self.wandb_init_kwargs)
 
             if entity.name:
                 run_config["name"] = entity.name
