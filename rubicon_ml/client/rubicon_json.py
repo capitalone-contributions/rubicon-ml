@@ -1,4 +1,5 @@
 import copy
+import importlib
 import logging
 import numbers
 import warnings
@@ -33,9 +34,7 @@ class RubiconJSON:
         warnings.warn(deprecation_msg, category=DeprecationWarning)
         LOGGER.warning(deprecation_msg)
 
-        try:
-            import jsonpath_ng
-        except ImportError:
+        if not importlib.util.find_spec("jsonpath_ng"):
             raise ImportError(
                 "`jsonpath-ng` is required to use `RubiconJSON`. Please install it with `pip "
                 "install jsonpath-ng` or `pip install rubicon-ml[jsonpath]`."
