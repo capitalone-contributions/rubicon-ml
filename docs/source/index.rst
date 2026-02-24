@@ -112,7 +112,6 @@ To install all extra modules, use the ``all`` extra.
    logging-examples/logging-concurrently
    logging-examples/log-with-schema
    logging-examples/tagging
-   logging-examples/rubiconJSON-querying
    visualizations.rst
 
 .. toctree::
