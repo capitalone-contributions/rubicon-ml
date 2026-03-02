@@ -82,7 +82,7 @@ def test_read_write_experiment_client_regression(
         _write_additional_tags_and_comments(experiment)
 
         if persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
 
         retrieved_experiment = project.experiment(id=experiment.id)
 
@@ -116,14 +116,14 @@ def test_read_write_feature_client_regression(
         experiment = project.log_experiment(**experiment_parameters)
 
         if is_existing_experiment and persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
             experiment = project.experiment(id=experiment.id)
 
         feature = experiment.log_feature(**feature_parameters)
         _write_additional_tags_and_comments(feature)
 
         if persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
 
         retrieved_feature = experiment.feature(name=feature.name)
 
@@ -155,7 +155,7 @@ def test_read_write_metric_client_regression(
         experiment = project.log_experiment(**experiment_parameters)
 
         if is_existing_experiment and persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
 
             experiment = project.experiment(id=experiment.id)
 
@@ -163,7 +163,7 @@ def test_read_write_metric_client_regression(
         _write_additional_tags_and_comments(metric)
 
         if persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
 
         retrieved_metric = experiment.metric(name=metric.name)
 
@@ -195,14 +195,14 @@ def test_read_write_parameter_client_regression(
         experiment = project.log_experiment(**experiment_parameters)
 
         if is_existing_experiment and persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
             experiment = project.experiment(id=experiment.id)
 
         parameter = experiment.log_parameter(**parameter_parameters)
         _write_additional_tags_and_comments(parameter)
 
         if persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
 
         retrieved_parameter = experiment.parameter(name=parameter.name)
 
@@ -274,14 +274,14 @@ def test_read_write_artifact_experiment_client_regression(
         experiment = project.log_experiment(**experiment_parameters)
 
         if is_existing_experiment and persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
             experiment = project.experiment(id=experiment.id)
 
         artifact = experiment.log_artifact(data_bytes=ARTIFACT_BINARY, **artifact_parameters)
         _write_additional_tags_and_comments(artifact)
 
         if persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
 
         retrieved_artifact = experiment.artifact(name=artifact.name)
 
@@ -354,14 +354,14 @@ def test_read_write_dataframe_experiment_client_regression(
         experiment = project.log_experiment(**experiment_parameters)
 
         if is_existing_experiment and persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
             experiment = project.experiment(id=experiment.id)
 
         dataframe = experiment.log_dataframe(df=DATAFRAME, **dataframe_parameters)
         _write_additional_tags_and_comments(dataframe)
 
         if persistence == "wandb":
-            rubicon.repository._active_run.finish()
+            experiment.finish()
 
         retrieved_dataframe = experiment.dataframe(name=dataframe.name)
 

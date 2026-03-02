@@ -64,7 +64,7 @@ class WandBRepository(BaseRepository):
 
         self.entity = entity
         self.storage_options = storage_options
-        self.wandb_init_kwargs = wandb_init_kwargs
+        self.wandb_init_kwargs = wandb_init_kwargs or {}
 
         self._active_run = None
         self._current_artifact_bytes = None
@@ -89,7 +89,8 @@ class WandBRepository(BaseRepository):
     @property
     def wandb(self):
         try:
-            import wandb
+            # import wandb
+            from c1_aiml_aem import wandb
         except ImportError:
             raise RubiconException(
                 "Weights & Biases is not installed. `pip install wandb` to use this repository."
@@ -117,10 +118,10 @@ class WandBRepository(BaseRepository):
         wandb.Run
             An active W&B run.
         """
-        if self._active_run is None or self._active_run.id != experiment_id or force_reinit:
-            if self._active_run is not None:
-                self._active_run.finish()
+        if (self._active_run and self._active_run.id != experiment_id) or force_reinit:
+            self.finish()
 
+        if self._active_run is None:
             run_config = {
                 "project": project_name,
                 "id": experiment_id,
@@ -288,6 +289,11 @@ class WandBRepository(BaseRepository):
                 objects.append(domain_class(**data))
 
         return objects
+
+    def finish(self):
+        if self._active_run is not None:
+            self._active_run.finish()
+            self._active_run = None
 
     # --- Filesystem Helpers ---
 

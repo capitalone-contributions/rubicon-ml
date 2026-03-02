@@ -645,7 +645,7 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         )
 
         if repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
 
         experiment = repository.get_experiment(
             domain_project.name,
@@ -690,7 +690,7 @@ def test_read_write_feature_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_feature(
@@ -708,7 +708,7 @@ def test_read_write_feature_regression(
         )
 
         if repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
 
         feature = repository.get_feature(
             domain_project.name,
@@ -757,7 +757,7 @@ def test_read_write_metric_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_metric(
@@ -775,7 +775,7 @@ def test_read_write_metric_regression(
         )
 
         if repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
 
         metric = repository.get_metric(
             domain_project.name,
@@ -824,7 +824,7 @@ def test_read_write_parameter_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_parameter(
@@ -842,7 +842,7 @@ def test_read_write_parameter_regression(
         )
 
         if repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
 
         parameter = repository.get_parameter(
             domain_project.name,
@@ -958,7 +958,7 @@ def test_read_write_artifact_experiment_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_artifact(
@@ -977,7 +977,7 @@ def test_read_write_artifact_experiment_regression(
         )
 
         if repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
 
         artifact_experiment = repository.get_artifact_metadata(
             domain_project.name,
@@ -1099,7 +1099,7 @@ def test_read_write_dataframe_experiment_regression(
         repository.create_experiment(domain_experiment)
 
         if is_existing_experiment and repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
             repository.get_experiment(domain_project.name, domain_experiment.id)
 
         repository.create_dataframe(
@@ -1118,7 +1118,7 @@ def test_read_write_dataframe_experiment_regression(
         )
 
         if repository_class == WandBRepository:
-            repository._active_run.finish()
+            repository.finish()
 
         dataframe_experiment = repository.get_dataframe_metadata(
             domain_project.name,
