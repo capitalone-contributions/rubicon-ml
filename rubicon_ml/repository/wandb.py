@@ -461,8 +461,7 @@ class WandBRepository(BaseRepository):
             return self._current_project
 
         try:
-            wandb_path = self._get_wandb_path(project_name)
-            list(self.api.runs(wandb_path, per_page=1))
+            self.api.runs(self._get_wandb_path(project_name), per_page=1)
         except Exception as e:
             raise RubiconException(f"No project with name '{project_name}' found.") from e
 
@@ -507,18 +506,19 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Experiment
             The experiment with ID `experiment_id`.
         """
-        run = self._get_active_run(project_name, experiment_id, force_reinit=True)
-        result = self._read_domain_from_config(
-            run, "_rubicon_experiment_metadata", domain.Experiment
+        experiment = self._read_domain_from_config(
+            self._get_active_run(project_name, experiment_id, force_reinit=True),
+            "_rubicon_experiment_metadata",
+            domain.Experiment,
         )
 
-        if result is None:
+        if experiment is None:
             raise RubiconException(
                 f"No experiment metadata found for experiment '{experiment_id}'. "
                 "This run was not created with `rubicon-ml`."
             )
 
-        return result
+        return experiment
 
     def get_experiments(self, project_name: str) -> List[domain.Experiment]:
         """Retrieve all experiments (W&B runs) from a project.
@@ -534,8 +534,7 @@ class WandBRepository(BaseRepository):
             The experiments logged to the project.
         """
         try:
-            wandb_path = self._get_wandb_path(project_name)
-            runs = self.api.runs(wandb_path)
+            runs = self.api.runs(self._get_wandb_path(project_name))
         except Exception as e:
             raise RubiconException(
                 f"Failed to retrieve experiments from project '{project_name}'."
@@ -570,19 +569,18 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Metric
             The metric with name `metric_name`.
         """
-        run = self._get_active_run(project_name, experiment_id)
-        slugified_name = slugify(metric_name, separator="_")
-
-        result = self._read_domain_from_config(
-            run, f"_rubicon_metric_{slugified_name}", domain.Metric
+        metric = self._read_domain_from_config(
+            self._get_active_run(project_name, experiment_id),
+            f"_rubicon_metric_{slugify(metric_name, separator='_')}",
+            domain.Metric,
         )
 
-        if result is None:
+        if metric is None:
             raise RubiconException(
                 f"No metric with name '{metric_name}' found in experiment '{experiment_id}'."
             )
 
-        return result
+        return metric
 
     def get_metrics(self, project_name: str, experiment_id: str) -> List[domain.Metric]:
         """Retrieve all metrics from a W&B run.
@@ -599,9 +597,11 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Metric
             The metrics logged to the experiment.
         """
-        run = self._get_active_run(project_name, experiment_id)
-
-        return self._read_domains_from_config(run, "_rubicon_metric_", domain.Metric)
+        return self._read_domains_from_config(
+            self._get_active_run(project_name, experiment_id),
+            "_rubicon_metric_",
+            domain.Metric,
+        )
 
     # -------- Parameters --------
 
@@ -624,19 +624,18 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Parameter
             The parameter with name `parameter_name`.
         """
-        run = self._get_active_run(project_name, experiment_id)
-        slugified_name = slugify(parameter_name, separator="_")
-
-        result = self._read_domain_from_config(
-            run, f"_rubicon_parameter_{slugified_name}", domain.Parameter
+        parameter = self._read_domain_from_config(
+            self._get_active_run(project_name, experiment_id),
+            f"_rubicon_parameter_{slugify(parameter_name, separator='_')}",
+            domain.Parameter,
         )
 
-        if result is None:
+        if parameter is None:
             raise RubiconException(
                 f"No parameter with name '{parameter_name}' found in experiment '{experiment_id}'."
             )
 
-        return result
+        return parameter
 
     def get_parameters(self, project_name: str, experiment_id: str) -> List[domain.Parameter]:
         """Retrieve all parameters from a W&B run's config.
@@ -653,9 +652,11 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Parameter
             The parameters logged to the experiment.
         """
-        run = self._get_active_run(project_name, experiment_id)
-
-        return self._read_domains_from_config(run, "_rubicon_parameter_", domain.Parameter)
+        return self._read_domains_from_config(
+            self._get_active_run(project_name, experiment_id),
+            "_rubicon_parameter_",
+            domain.Parameter,
+        )
 
     # -------- Features --------
 
@@ -709,9 +710,11 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Feature
             The features logged to the experiment.
         """
-        run = self._get_active_run(project_name, experiment_id)
-
-        return self._read_domains_from_config(run, "_rubicon_feature_", domain.Feature)
+        return self._read_domains_from_config(
+            self._get_active_run(project_name, experiment_id),
+            "_rubicon_feature_",
+            domain.Feature,
+        )
 
     # -------- Artifacts --------
 
@@ -768,19 +771,19 @@ class WandBRepository(BaseRepository):
         rubicon.domain.Artifact
             The artifact metadata.
         """
-        run = self._get_active_run(project_name, experiment_id)
-
         artifact_id, _ = artifact_id.split(":")
-        result = self._read_domain_from_config(
-            run, f"_rubicon_artifact_{artifact_id}", domain.Artifact
+        artifact = self._read_domain_from_config(
+            self._get_active_run(project_name, experiment_id),
+            f"_rubicon_artifact_{artifact_id}",
+            domain.Artifact,
         )
 
-        if result is None:
+        if artifact is None:
             raise RubiconException(
                 f"No artifact with id '{artifact_id}' found in experiment '{experiment_id}'."
             )
 
-        return result
+        return artifact
 
     def get_artifacts_metadata(
         self, project_name: str, experiment_id: str
@@ -799,9 +802,11 @@ class WandBRepository(BaseRepository):
         list of rubicon.domain.Artifact
             The artifacts logged to the experiment.
         """
-        run = self._get_active_run(project_name, experiment_id)
-
-        return self._read_domains_from_config(run, "_rubicon_artifact_", domain.Artifact)
+        return self._read_domains_from_config(
+            self._get_active_run(project_name, experiment_id),
+            "_rubicon_artifact_",
+            domain.Artifact,
+        )
 
     def get_artifact_data(
         self, project_name: str, artifact_id: str, experiment_id: Optional[str] = None
@@ -900,18 +905,18 @@ class WandBRepository(BaseRepository):
         if not experiment_id:
             raise RubiconException("experiment_id is required to retrieve dataframes from W&B.")
 
-        run = self._get_active_run(project_name, experiment_id)
-
-        result = self._read_domain_from_config(
-            run, f"_rubicon_dataframe_{dataframe_id}", domain.Dataframe
+        dataframe = self._read_domain_from_config(
+            self._get_active_run(project_name, experiment_id),
+            f"_rubicon_dataframe_{dataframe_id}",
+            domain.Dataframe,
         )
 
-        if result is None:
+        if dataframe is None:
             raise RubiconException(
                 f"No dataframe with id '{dataframe_id}' found in experiment '{experiment_id}'."
             )
 
-        return result
+        return dataframe
 
     def get_dataframes_metadata(
         self, project_name: str, experiment_id: Optional[str] = None
@@ -933,9 +938,11 @@ class WandBRepository(BaseRepository):
         if not experiment_id:
             raise RubiconException("experiment_id is required to retrieve dataframes from W&B.")
 
-        run = self._get_active_run(project_name, experiment_id)
-
-        return self._read_domains_from_config(run, "_rubicon_dataframe_", domain.Dataframe)
+        return self._read_domains_from_config(
+            self._get_active_run(project_name, experiment_id),
+            "_rubicon_dataframe_",
+            domain.Dataframe,
+        )
 
     def get_dataframe_data(
         self,
@@ -1074,13 +1081,11 @@ class WandBRepository(BaseRepository):
 
         run = self._get_active_run(project_name, experiment_id)
 
-        # Use W&B's native tags for Experiment-level tags
         if entity_type == "Experiment":
             current_tags = list(run.tags) if run.tags else []
             new_tags = current_tags + [t for t in tags if t not in current_tags]
             run.tags = new_tags
 
-        # Store history in config for rubicon-ml audit trail
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
         key = f"{key_prefix}{uuid4()}"
         run.config[key] = json.dumps({"added_tags": tags, "_timestamp": time.time()})
@@ -1116,13 +1121,11 @@ class WandBRepository(BaseRepository):
 
         run = self._get_active_run(project_name, experiment_id)
 
-        # Use W&B's native tags for Experiment-level tags
         if entity_type == "Experiment":
             current_tags = list(run.tags) if run.tags else []
             new_tags = [t for t in current_tags if t not in tags]
             run.tags = new_tags
 
-        # Store history in config for rubicon-ml audit trail
         key_prefix = self._get_tag_comment_key_prefix(entity_type, entity_identifier, "tags")
         key = f"{key_prefix}{uuid4()}"
         run.config[key] = json.dumps({"removed_tags": tags, "_timestamp": time.time()})
