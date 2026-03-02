@@ -67,8 +67,6 @@ class WandBRepository(BaseRepository):
         self.wandb_init_kwargs = wandb_init_kwargs or {}
 
         self._active_run = None
-        self._current_artifact_bytes = None
-        self._current_dataframe = None
         self._current_project = None
 
     # ------ WandB Helpers ------
@@ -329,12 +327,6 @@ class WandBRepository(BaseRepository):
     def _mkdir(self, dirpath: str) -> bool:
         return True
 
-    def _persist_bytes(self, bytes_data: bytes, path: str):
-        self._current_artifact_bytes = bytes_data
-
-    def _persist_dataframe(self, df: pd.DataFrame, path: str):
-        self._current_dataframe = df
-
     def _persist_domain(self, entity: Any, path: str):
         """Persist a domain object to W&B.
 
@@ -381,51 +373,6 @@ class WandBRepository(BaseRepository):
             entity_name = slugify(entity.name, separator="_")
             self._set_config_value(entity.name, entity.value)
             self._set_config_value(f"_rubicon_parameter_{entity_name}", json.dumps(entity))
-
-        elif isinstance(entity, domain.Artifact):
-            with tempfile.NamedTemporaryFile(delete=False) as file:
-                file.write(self._current_artifact_bytes)
-                file.seek(0)
-                temp_path = file.name
-
-            try:
-                self._current_artifact_bytes = None
-                artifact = self.wandb.Artifact(name=entity.name, type="model")
-                artifact.add_file(temp_path, name=entity.name)
-                artifact.save()
-
-                entity_id = entity.id
-                entity.id = f"{entity.id}:{entity.name}"  # for accurate W&B retrieval
-
-                self._set_config_value(f"_rubicon_artifact_{entity_id}", json.dumps(entity))
-            finally:
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-
-        elif isinstance(entity, domain.Dataframe):
-            # 1. Save as W&B Artifact (type="dataset") for reliable retrieval
-            with tempfile.NamedTemporaryFile(mode="wb", suffix=".parquet", delete=False) as file:
-                temp_path = file.name
-                self._current_dataframe.to_parquet(temp_path, index=False)
-
-            try:
-                artifact = self.wandb.Artifact(
-                    name=f"dataframe-{entity.id}",
-                    type="dataset",
-                    description=entity.description or f"Dataframe {entity.name or entity.id}",
-                )
-                artifact.add_file(temp_path, name=f"{entity.name or entity.id}.parquet")
-                artifact.save()
-            finally:
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-
-            # 2. Also log as W&B Table for visualization in UI
-            dataframe_table = self.wandb.Table(dataframe=self._current_dataframe)
-            self.wandb.log({entity.name or entity.id: dataframe_table})
-
-            # 3. Store complete dataframe metadata for reconstruction
-            self._set_config_value(f"_rubicon_dataframe_{entity.id}", json.dumps(entity))
 
     def _read_bytes(self, path: str, err_msg: Optional[str] = None) -> bytes:
         """W&B backend doesn't use filesystem paths."""
@@ -756,7 +703,25 @@ class WandBRepository(BaseRepository):
                 "Artifacts must be logged to an experiment (W&B run)."
             )
 
-        super().create_artifact(artifact, data, project_name, experiment_id)
+        self._get_active_run(project_name, experiment_id)
+
+        with tempfile.NamedTemporaryFile(delete=False) as file:
+            file.write(data)
+            file.seek(0)
+            temp_path = file.name
+
+        try:
+            wandb_artifact = self.wandb.Artifact(name=artifact.name, type="model")
+            wandb_artifact.add_file(temp_path, name=artifact.name)
+            wandb_artifact.save()
+
+            entity_id = artifact.id
+            artifact.id = f"{artifact.id}:{artifact.name}"  # for accurate W&B retrieval
+
+            self._set_config_value(f"_rubicon_artifact_{entity_id}", json.dumps(artifact))
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
 
     def get_artifact_metadata(
         self, project_name: str, artifact_id: str, experiment_id: str
@@ -885,7 +850,31 @@ class WandBRepository(BaseRepository):
                 "Dataframes must be logged to an experiment (W&B run)."
             )
 
-        super().create_dataframe(dataframe, data, project_name, experiment_id)
+        self._get_active_run(project_name, experiment_id)
+
+        # 1. Save as W&B Artifact (type="dataset") for reliable retrieval
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".parquet", delete=False) as file:
+            temp_path = file.name
+            data.to_parquet(temp_path, index=False)
+
+        try:
+            artifact = self.wandb.Artifact(
+                name=f"dataframe-{dataframe.id}",
+                type="dataset",
+                description=dataframe.description or f"Dataframe {dataframe.name or dataframe.id}",
+            )
+            artifact.add_file(temp_path, name=f"{dataframe.name or dataframe.id}.parquet")
+            artifact.save()
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+
+        # 2. Also log as W&B Table for visualization in UI
+        dataframe_table = self.wandb.Table(dataframe=data)
+        self.wandb.log({dataframe.name or dataframe.id: dataframe_table})
+
+        # 3. Store complete dataframe metadata for reconstruction
+        self._set_config_value(f"_rubicon_dataframe_{dataframe.id}", json.dumps(dataframe))
 
     def get_dataframe_metadata(
         self, project_name: str, dataframe_id: str, experiment_id: Optional[str] = None
