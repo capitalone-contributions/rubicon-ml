@@ -1,10 +1,13 @@
 import copy
+import importlib
+import logging
 import numbers
+import warnings
 from typing import Any, Dict, List, Optional, Type, Union
 
-from jsonpath_ng.ext import parse
-
 from rubicon_ml.client import Experiment, Project, Rubicon
+
+LOGGER = logging.getLogger(__name__)
 
 
 class RubiconJSON:
@@ -27,6 +30,16 @@ class RubiconJSON:
         projects: Optional[List[Project]] = None,
         experiments: Optional[List[Experiment]] = None,
     ):
+        deprecation_msg = "`RubiconJSON` is deprecated and will be removed in an upcoming release."
+        warnings.warn(deprecation_msg, category=DeprecationWarning)
+        LOGGER.warning(deprecation_msg)
+
+        if not importlib.util.find_spec("jsonpath_ng"):
+            raise ImportError(
+                "`jsonpath-ng` is required to use `RubiconJSON`. Please install it with `pip "
+                "install jsonpath-ng` or `pip install rubicon-ml[jsonpath]`."
+            )
+
         if rubicon_objects:
             rubicon_objects = self._validate_input(rubicon_objects, Rubicon, "rubicon_objects")
         if projects:
@@ -143,6 +156,8 @@ class RubiconJSON:
         ----------
         query: JSONPath-like query
         """
+
+        from jsonpath_ng.ext import parse
 
         if ">" in query or "<" in query:
             # non-numerics break greater than and less than comparisons in `jsonpath_ng`
