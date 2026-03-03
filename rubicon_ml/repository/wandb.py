@@ -22,14 +22,17 @@ class WandBRepository(BaseRepository):
     The `WandBRepository` is experimental and may contain breaking changes in future versions.
     If you encounter any bugs or missing features, open an issue on GitHub.
 
-    This repository maps rubicon-ml concepts to W&B as follows:
+    All rubicon-ml domain objects are serialized and stored as private W&B Config, e.g. the
+    `_rubicon_experiment_metadata` key would contain the complete representation of the logged
+    experiment. While all non-project entities below log this metadata to W&B Config, some
+    log additional information as follows:
     - rubicon-ml Projects → W&B Projects
     - rubicon-ml Experiments → W&B Runs
-    - rubicon-ml Parameters → W&B Config
-    - rubicon-ml Features → W&B Config (w/ importances as Metrics)
-    - rubicon-ml Metrics → W&B Metrics
+    - rubicon-ml Feature importances → W&B Metrics, named by rubicon-ml feature name
+    - rubicon-ml Metric values → W&B Metrics, named by rubicon-ml metric name
+    - rubicon-ml Parameter values → W&B Config, named by rubicon-ml parameter name
     - rubicon-ml Artifacts → W&B Artifacts
-    - rubicon-ml Dataframes → W&B Tables (and Artifacts for retrieval)
+    - rubicon-ml Dataframes → W&B Artifacts and Tables
 
     Parameters
     ----------
