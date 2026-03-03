@@ -22,7 +22,7 @@ class Config:
     Parameters
     ----------
     persistence : str, optional
-        The persistence type. Can be one of ["filesystem", "memory"].
+        The persistence type. Can be one of ["filesystem", "memory", "wandb"].
     root_dir : str, optional
         Absolute or relative filepath. Defaults to using the local
         filesystem. Prefix with s3:// to use s3 instead.
