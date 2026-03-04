@@ -90,8 +90,7 @@ class WandBRepository(BaseRepository):
     @property
     def wandb(self):
         try:
-            # import wandb
-            from c1_aiml_aem import wandb
+            import wandb
         except ImportError:
             raise RubiconException(
                 "Weights & Biases is not installed. `pip install wandb` to use this repository."
