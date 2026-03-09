@@ -6,7 +6,7 @@ SPHINXBUILD   = sphinx-build
 SOURCEDIR     = source
 BUILDDIR      = build
 
-.PHONY: help clean pre-build build-docs post-build html open
+.PHONY: help clean pre-build build-docs html open
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -45,15 +45,7 @@ pre-build:
 build-docs:
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-# Manually update underscore-js to deal with Whitesource vulnerability.
-# I have no idea where the original dependency is coming from.
-post-build:
-	rm -f ./build/html/_static/underscore*.js
-	cp ./source/_static/underscore.js ./build/html/_static/underscore.js
-
-	$(info open with 'open ./build/html/index.html')
-
-html: clean pre-build build-docs post-build
+html: clean pre-build build-docs
 
 open:
 	open ./build/html/index.html
