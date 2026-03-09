@@ -10,11 +10,9 @@ intake==2.0.8
     # via rubicon-ml (pyproject.toml)
 joblib==1.5.3
     # via scikit-learn
-jsonpath-ng==1.7.0
-    # via rubicon-ml (pyproject.toml)
 networkx==3.6.1
     # via intake
-numpy==2.4.2
+numpy==2.4.3
     # via
     #   rubicon-ml (pyproject.toml)
     #   pandas
@@ -22,7 +20,7 @@ numpy==2.4.2
     #   scipy
 pandas==3.0.1
     # via rubicon-ml (pyproject.toml)
-platformdirs==4.9.2
+platformdirs==4.9.4
     # via intake
 pyarrow==23.0.1
     # via rubicon-ml (pyproject.toml)
@@ -34,7 +32,7 @@ pyyaml==6.0.3
     #   intake
 scikit-learn==1.8.0
     # via rubicon-ml (pyproject.toml)
-scipy==1.17.0
+scipy==1.17.1
     # via scikit-learn
 six==1.17.0
     # via python-dateutil
