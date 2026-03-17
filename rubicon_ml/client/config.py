@@ -8,6 +8,7 @@ from rubicon_ml.repository import (
     LocalRepository,
     MemoryRepository,
     S3Repository,
+    WandBRepository,
 )
 
 
@@ -21,7 +22,7 @@ class Config:
     Parameters
     ----------
     persistence : str, optional
-        The persistence type. Can be one of ["filesystem", "memory"].
+        The persistence type. Can be one of ["filesystem", "memory", "wandb"].
     root_dir : str, optional
         Absolute or relative filepath. Defaults to using the local
         filesystem. Prefix with s3:// to use s3 instead.
@@ -34,11 +35,12 @@ class Config:
         are passed directly to the underlying filesystem class.
     """
 
-    PERSISTENCE_TYPES = ["filesystem", "memory"]
+    PERSISTENCE_TYPES = ["filesystem", "memory", "wandb"]
     REPOSITORIES: Dict[str, Type[BaseRepository]] = {
         "memory-memory": MemoryRepository,
         "filesystem-local": LocalRepository,
         "filesystem-s3": S3Repository,
+        "wandb-custom": WandBRepository,
     }
 
     def __init__(

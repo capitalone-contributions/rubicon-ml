@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, List
 
 from rubicon_ml import domain
@@ -20,6 +21,8 @@ from rubicon_ml.exceptions import RubiconException
 if TYPE_CHECKING:
     from rubicon_ml.client import Project
     from rubicon_ml.domain import Experiment as ExperimentDomain
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Experiment(Base, ArtifactMixin, DataframeMixin, TagMixin, CommentMixin):
@@ -480,6 +483,19 @@ class Experiment(Base, ArtifactMixin, DataframeMixin, TagMixin, CommentMixin):
             The experiments that are tagged as parents of this experiment.
         """
         return self._get_experiments_from_tags("parent")
+
+    def finish(self, warn=True):
+        """Mark the experiment as completed.
+        
+        Only available on repositories that have a `finish` method:
+        - `WandBRepository`
+        """
+
+        for repo in self.repositories:
+            if hasattr(repo, "finish"):
+                repo.finish()
+            elif warn:
+                LOGGER.warning(f"{repo.__class__.__name__} does not have a `finish` method.")
 
     @property
     def id(self):

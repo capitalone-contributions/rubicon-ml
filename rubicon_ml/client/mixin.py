@@ -680,9 +680,10 @@ class TagMixin:
         project_name, experiment_id = self._parent._get_identifiers()
         entity_identifier = None
 
-        # experiments do not return an entity identifier - they are the entity
+        # experiments are identified by their `id`s
         if isinstance(self, client.Experiment):
             experiment_id = self.id
+            entity_identifier = self.id
         # dataframes and artifacts are identified by their `id`s
         elif isinstance(self, client.Dataframe) or isinstance(self, client.Artifact):
             entity_identifier = self.id
@@ -777,9 +778,10 @@ class CommentMixin:
         project_name, experiment_id = self._parent._get_identifiers()
         entity_identifier = None
 
-        # experiments do not return an entity identifier - they are the entity
+        # experiments are identified by their `id`s
         if isinstance(self, client.Experiment):
             experiment_id = self.id
+            entity_identifier = self.id
         # dataframes and artifacts are identified by their `id`s
         elif isinstance(self, client.Dataframe) or isinstance(self, client.Artifact):
             entity_identifier = self.id

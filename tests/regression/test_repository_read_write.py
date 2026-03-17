@@ -7,19 +7,24 @@ import pandas as pd
 import pytest
 
 from rubicon_ml import domain
-from rubicon_ml.repository import LocalRepository, MemoryRepository
+from rubicon_ml.exceptions import RubiconException
+from rubicon_ml.repository import LocalRepository, MemoryRepository, WandBRepository
 from rubicon_ml.repository.utils import json, slugify
 
 ARTIFACT_BINARY = b"artifact"
-COMMENTS_TO_ADD = ["comment_a", "comment_b"]
-COMMENTS_TO_REMOVE = ["comment_a"]
-DATAFRAME = pd.DataFrame([[0]])
+COMMENTS_TO_ADD = ["added comment a", "added comment b"]
+COMMENTS_TO_REMOVE = ["added comment a"]
+DATAFRAME = pd.DataFrame([[0]], columns=["column_a"])
 REPOSITORIES_TO_TEST = [  # TODO: find local/CI S3 testing solution
-    LocalRepository,
-    MemoryRepository,
+    pytest.param(LocalRepository),
+    pytest.param(MemoryRepository),
 ]
-TAGS_TO_ADD = ["added_a", "added_b"]
-TAGS_TO_REMOVE = ["added_a"]
+REPOSITORIES_TO_READ_WRITE_TEST = [
+    *REPOSITORIES_TO_TEST,
+    pytest.param(WandBRepository, marks=pytest.mark.wandb),
+]
+TAGS_TO_ADD = ["added_tag_a", "added_tag_b"]
+TAGS_TO_REMOVE = ["added_tag_a"]
 
 
 def _test_read_additional_tags_and_comments(
@@ -538,11 +543,7 @@ def test_read_dataframe_experiment_regression(
             assert dataframe_experiment_data.equals(DATAFRAME)
 
 
-def _test_read_write_additional_tags_and_comments(
-    repository, project_name, **entity_identification_kwargs
-):
-    is_passing = True
-
+def _write_additional_tags_and_comments(repository, project_name, **entity_identification_kwargs):
     repository.add_tags(
         project_name,
         TAGS_TO_ADD,
@@ -553,6 +554,23 @@ def _test_read_write_additional_tags_and_comments(
         TAGS_TO_REMOVE,
         **entity_identification_kwargs,
     )
+    repository.add_comments(
+        project_name,
+        COMMENTS_TO_ADD,
+        **entity_identification_kwargs,
+    )
+    repository.remove_comments(
+        project_name,
+        COMMENTS_TO_REMOVE,
+        **entity_identification_kwargs,
+    )
+
+
+def _test_read_write_additional_tags_and_comments(
+    repository, project_name, **entity_identification_kwargs
+):
+    is_passing = True
+
     additional_tags = repository.get_tags(
         project_name,
         **entity_identification_kwargs,
@@ -564,16 +582,6 @@ def _test_read_write_additional_tags_and_comments(
         if "removed_tags" in tags:
             is_passing &= tags["removed_tags"] == TAGS_TO_REMOVE
 
-    repository.add_comments(
-        project_name,
-        COMMENTS_TO_ADD,
-        **entity_identification_kwargs,
-    )
-    repository.remove_comments(
-        project_name,
-        COMMENTS_TO_REMOVE,
-        **entity_identification_kwargs,
-    )
     additional_comments = repository.get_comments(
         project_name,
         **entity_identification_kwargs,
@@ -588,7 +596,7 @@ def _test_read_write_additional_tags_and_comments(
     return is_passing
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_project_regression(project_json, repository_class):
     """Tests that `rubicon_ml` can read the project domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -602,13 +610,14 @@ def test_read_write_project_regression(project_json, repository_class):
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
+        domain_project = domain.Project(**project_json)
+        repository.create_project(domain_project)
         project = repository.get_project(project_json["name"]).__dict__
 
         assert project == project_json
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_experiment_regression(experiment_json, project_json, repository_class):
     """Tests that `rubicon_ml` can read the experiment domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -622,29 +631,45 @@ def test_read_write_experiment_regression(experiment_json, project_json, reposit
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
+
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_experiment.id,
+            entity_type="Experiment",
+        )
+
+        if repository_class == WandBRepository:
+            repository.finish()
+
         experiment = repository.get_experiment(
-            project_json["name"],
-            experiment_json["id"],
+            domain_project.name,
+            domain_experiment.id,
         ).__dict__
 
-        assert experiment == experiment_json
+        assert experiment == domain_experiment.__dict__
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=experiment_json["id"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_experiment.id,
             entity_type="Experiment",
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_feature_regression(
     experiment_json,
     feature_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the feature domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -658,35 +683,60 @@ def test_read_write_feature_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
-        repository.create_feature(
-            domain.Feature(**feature_json),
-            project_json["name"],
-            experiment_json["id"],
-        )
-        feature = repository.get_feature(
-            project_json["name"],
-            experiment_json["id"],
-            feature_json["name"],
-        ).__dict__
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_feature = domain.Feature(**feature_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
 
-        assert feature == feature_json
-        assert _test_read_write_additional_tags_and_comments(
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
+        repository.create_feature(
+            domain_feature,
+            domain_project.name,
+            domain_experiment.id,
+        )
+
+        _write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=feature_json["name"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_feature.name,
             entity_type="Feature",
         )
 
+        if repository_class == WandBRepository:
+            repository.finish()
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+        feature = repository.get_feature(
+            domain_project.name,
+            domain_experiment.id,
+            domain_feature.name,
+        ).__dict__
+
+        assert feature == domain_feature.__dict__
+        assert _test_read_write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_feature.name,
+            entity_type="Feature",
+        )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
+
+
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_metric_regression(
     experiment_json,
     metric_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the metric domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -700,35 +750,60 @@ def test_read_write_metric_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
-        repository.create_metric(
-            domain.Metric(**metric_json),
-            project_json["name"],
-            experiment_json["id"],
-        )
-        metric = repository.get_metric(
-            project_json["name"],
-            experiment_json["id"],
-            metric_json["name"],
-        ).__dict__
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_metric = domain.Metric(**metric_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
 
-        assert metric == metric_json
-        assert _test_read_write_additional_tags_and_comments(
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
+        repository.create_metric(
+            domain_metric,
+            domain_project.name,
+            domain_experiment.id,
+        )
+
+        _write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=metric_json["name"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_metric.name,
             entity_type="Metric",
         )
 
+        if repository_class == WandBRepository:
+            repository.finish()
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+        metric = repository.get_metric(
+            domain_project.name,
+            domain_experiment.id,
+            domain_metric.name,
+        ).__dict__
+
+        assert metric == domain_metric.__dict__
+        assert _test_read_write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_metric.name,
+            entity_type="Metric",
+        )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
+
+
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_parameter_regression(
     experiment_json,
     parameter_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the parameter domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -742,36 +817,63 @@ def test_read_write_parameter_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
-        repository.create_parameter(
-            domain.Parameter(**parameter_json),
-            project_json["name"],
-            experiment_json["id"],
-        )
-        parameter = repository.get_parameter(
-            project_json["name"],
-            experiment_json["id"],
-            parameter_json["name"],
-        ).__dict__
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_parameter = domain.Parameter(**parameter_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
 
-        assert parameter == parameter_json
-        assert _test_read_write_additional_tags_and_comments(
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
+        repository.create_parameter(
+            domain_parameter,
+            domain_project.name,
+            domain_experiment.id,
+        )
+
+        _write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=parameter_json["name"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_parameter.name,
             entity_type="Parameter",
         )
 
+        if repository_class == WandBRepository:
+            repository.finish()
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+        parameter = repository.get_parameter(
+            domain_project.name,
+            domain_experiment.id,
+            domain_parameter.name,
+        ).__dict__
+
+        assert parameter == domain_parameter.__dict__
+        assert _test_read_write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_parameter.name,
+            entity_type="Parameter",
+        )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
+
+
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_artifact_project_regression(
     artifact_project_json,
     project_json,
     repository_class,
 ):
-    """Tests that `rubicon_ml` can read the artifact (project) domain entity that it wrote."""
+    """Tests that `rubicon_ml` can read the artifact (project) domain entity that it wrote.
+
+    For WandBRepository, this test verifies that project-level artifacts raise
+    a RubiconException since W&B does not support project-level artifacts.
+    """
     if repository_class == LocalRepository:
         temp_dir_context = tempfile.TemporaryDirectory()
     else:
@@ -783,37 +885,59 @@ def test_read_write_artifact_project_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
+        domain_project = domain.Project(**project_json)
+        domain_artifact = domain.Artifact(**artifact_project_json)
+        repository.create_project(domain_project)
+
+        if repository_class == WandBRepository:
+            with pytest.raises(RubiconException, match="does not support project-level artifacts"):
+                repository.create_artifact(
+                    domain_artifact,
+                    ARTIFACT_BINARY,
+                    domain_project.name,
+                )
+            return
+
         repository.create_artifact(
-            domain.Artifact(**artifact_project_json),
+            domain_artifact,
             ARTIFACT_BINARY,
-            project_json["name"],
-        )
-        artifact_project = repository.get_artifact_metadata(
-            project_json["name"],
-            artifact_project_json["id"],
-        ).__dict__
-        artifact_project_data = repository.get_artifact_data(
-            project_json["name"],
-            artifact_project_json["id"],
+            domain_project.name,
         )
 
-        assert artifact_project == artifact_project_json
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            entity_identifier=domain_artifact.id,
+            entity_type="Artifact",
+        )
+
+        artifact_project = repository.get_artifact_metadata(
+            domain_project.name,
+            domain_artifact.id,
+        ).__dict__
+        artifact_project_data = repository.get_artifact_data(
+            domain_project.name,
+            domain_artifact.id,
+        )
+
+        assert artifact_project == domain_artifact.__dict__
         assert artifact_project_data == ARTIFACT_BINARY
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            entity_identifier=artifact_project_json["id"],
+            domain_project.name,
+            entity_identifier=domain_artifact.id,
             entity_type="Artifact",
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_artifact_experiment_regression(
     artifact_experiment_json,
     experiment_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the artifact (experiment) domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -827,43 +951,70 @@ def test_read_write_artifact_experiment_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_artifact = domain.Artifact(**artifact_experiment_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
+
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
         repository.create_artifact(
-            domain.Artifact(**artifact_experiment_json),
+            domain_artifact,
             ARTIFACT_BINARY,
-            project_json["name"],
-            experiment_json["id"],
-        )
-        artifact_experiment = repository.get_artifact_metadata(
-            project_json["name"],
-            artifact_experiment_json["id"],
-            experiment_json["id"],
-        ).__dict__
-        artifact_experiment_data = repository.get_artifact_data(
-            project_json["name"],
-            artifact_experiment_json["id"],
-            experiment_json["id"],
+            domain_project.name,
+            domain_experiment.id,
         )
 
-        assert artifact_experiment == artifact_experiment_json
-        assert artifact_experiment_data == ARTIFACT_BINARY
-        assert _test_read_write_additional_tags_and_comments(
+        _write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=artifact_experiment_json["id"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_artifact.id,
             entity_type="Artifact",
         )
 
+        if repository_class == WandBRepository:
+            repository.finish()
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+        artifact_experiment = repository.get_artifact_metadata(
+            domain_project.name,
+            domain_artifact.id,
+            domain_experiment.id,
+        ).__dict__
+        artifact_experiment_data = repository.get_artifact_data(
+            domain_project.name,
+            domain_artifact.id,
+            domain_experiment.id,
+        )
+
+        assert artifact_experiment == domain_artifact.__dict__
+        assert artifact_experiment_data == ARTIFACT_BINARY
+        assert _test_read_write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_artifact.id,
+            entity_type="Artifact",
+        )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
+
+
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
 def test_read_write_dataframe_project_regression(
     dataframe_project_json,
     project_json,
     repository_class,
 ):
-    """Tests that `rubicon_ml` can read the dataframe (project) domain entity that it wrote."""
+    """Tests that `rubicon_ml` can read the dataframe (project) domain entity that it wrote.
+
+    For WandBRepository, this test verifies that project-level dataframes raise
+    a RubiconException since W&B does not support project-level dataframes.
+    """
     if repository_class == LocalRepository:
         temp_dir_context = tempfile.TemporaryDirectory()
     else:
@@ -875,37 +1026,59 @@ def test_read_write_dataframe_project_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
+        domain_project = domain.Project(**project_json)
+        domain_dataframe = domain.Dataframe(**dataframe_project_json)
+        repository.create_project(domain_project)
+
+        if repository_class == WandBRepository:
+            with pytest.raises(RubiconException, match="does not support project-level dataframes"):
+                repository.create_dataframe(
+                    domain_dataframe,
+                    DATAFRAME,
+                    domain_project.name,
+                )
+            return
+
         repository.create_dataframe(
-            domain.Dataframe(**dataframe_project_json),
+            domain_dataframe,
             DATAFRAME,
-            project_json["name"],
-        )
-        dataframe_project = repository.get_dataframe_metadata(
-            project_json["name"],
-            dataframe_project_json["id"],
-        ).__dict__
-        dataframe_project_data = repository.get_dataframe_data(
-            project_json["name"],
-            dataframe_project_json["id"],
+            domain_project.name,
         )
 
-        assert dataframe_project == dataframe_project_json
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            entity_identifier=domain_dataframe.id,
+            entity_type="Dataframe",
+        )
+
+        dataframe_project = repository.get_dataframe_metadata(
+            domain_project.name,
+            domain_dataframe.id,
+        ).__dict__
+        dataframe_project_data = repository.get_dataframe_data(
+            domain_project.name,
+            domain_dataframe.id,
+        )
+
+        assert dataframe_project == domain_dataframe.__dict__
         assert dataframe_project_data.equals(DATAFRAME)
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            entity_identifier=dataframe_project_json["id"],
+            domain_project.name,
+            entity_identifier=domain_dataframe.id,
             entity_type="Dataframe",
         )
 
 
-@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_TEST)
+@pytest.mark.parametrize("repository_class", REPOSITORIES_TO_READ_WRITE_TEST)
+@pytest.mark.parametrize("is_existing_experiment", [True, False])
 def test_read_write_dataframe_experiment_regression(
     dataframe_experiment_json,
     experiment_json,
     project_json,
     repository_class,
+    is_existing_experiment,
 ):
     """Tests that `rubicon_ml` can read the dataframe (experiment) domain entity that it wrote."""
     if repository_class == LocalRepository:
@@ -919,34 +1092,57 @@ def test_read_write_dataframe_experiment_regression(
         root_dir = os.path.join(temp_dir_name, "test-rubicon-ml")
         repository = repository_class(root_dir=root_dir)
 
-        repository.create_project(domain.Project(**project_json))
-        repository.create_experiment(domain.Experiment(**experiment_json))
+        domain_project = domain.Project(**project_json)
+        domain_experiment = domain.Experiment(**experiment_json)
+        domain_dataframe = domain.Dataframe(**dataframe_experiment_json)
+        repository.create_project(domain_project)
+        repository.create_experiment(domain_experiment)
+
+        if is_existing_experiment and repository_class == WandBRepository:
+            repository.finish()
+            repository.get_experiment(domain_project.name, domain_experiment.id)
+
         repository.create_dataframe(
-            domain.Dataframe(**dataframe_experiment_json),
+            domain_dataframe,
             DATAFRAME,
-            project_json["name"],
-            experiment_json["id"],
-        )
-        dataframe_experiment = repository.get_dataframe_metadata(
-            project_json["name"],
-            dataframe_experiment_json["id"],
-            experiment_json["id"],
-        ).__dict__
-        dataframe_experiment_data = repository.get_dataframe_data(
-            project_json["name"],
-            dataframe_experiment_json["id"],
-            experiment_json["id"],
+            domain_project.name,
+            domain_experiment.id,
         )
 
-        assert dataframe_experiment == dataframe_experiment_json
+        _write_additional_tags_and_comments(
+            repository,
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_dataframe.id,
+            entity_type="Dataframe",
+        )
+
+        if repository_class == WandBRepository:
+            repository.finish()
+
+        dataframe_experiment = repository.get_dataframe_metadata(
+            domain_project.name,
+            domain_dataframe.id,
+            domain_experiment.id,
+        ).__dict__
+        dataframe_experiment_data = repository.get_dataframe_data(
+            domain_project.name,
+            domain_dataframe.id,
+            domain_experiment.id,
+        )
+
+        assert dataframe_experiment == domain_dataframe.__dict__
         assert dataframe_experiment_data.equals(DATAFRAME)
         assert _test_read_write_additional_tags_and_comments(
             repository,
-            project_json["name"],
-            experiment_id=experiment_json["id"],
-            entity_identifier=dataframe_experiment_json["id"],
+            domain_project.name,
+            experiment_id=domain_experiment.id,
+            entity_identifier=domain_dataframe.id,
             entity_type="Dataframe",
         )
+
+    if repository_class == MemoryRepository:
+        repository.filesystem.store = {}
 
 
 def _test_write_additional_tags_and_comments(

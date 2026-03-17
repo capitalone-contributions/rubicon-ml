@@ -67,6 +67,16 @@ Artifact
 
 .. _library-reference-publish:
 
+repositories
+============
+.. autoclass:: rubicon_ml.repository.LocalRepository
+
+.. autoclass:: rubicon_ml.repository.MemoryRepository
+
+.. autoclass:: rubicon_ml.repository.S3Repository
+
+.. autoclass:: rubicon_ml.repository.WandBRepository
+
 exception_handling
 ==================
 
@@ -77,13 +87,6 @@ publish
 ``rubicon_ml`` leverages ``intake`` to easily share sets of experiments.
 
 .. autofunction:: rubicon_ml.publish
-
-.. _library-reference-rubiconJSON:
-
-RubiconJSON
-===========
-.. autoclass:: rubicon_ml.RubiconJSON
-   :members: search
 
 .. _library-reference-sklearn:
 

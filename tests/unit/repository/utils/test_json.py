@@ -1,5 +1,5 @@
 from base64 import b64encode
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import numpy as np
 
@@ -8,15 +8,25 @@ from rubicon_ml.repository.utils import json
 
 
 def test_can_serialize_datetime():
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     to_serialize = {"date": now, "other": None}
     serialized = json.dumps(to_serialize)
 
     assert "datetime" in serialized
-    assert now.strftime("%Y-%m-%d %H:%M:%S.%f") in serialized
+    assert now.isoformat() in serialized
 
 
 def test_can_deserialize_datetime():
+    now = datetime.now(timezone.utc)
+    to_deserialize = '{"date": {"_type": "datetime", "value": "' + now.isoformat() + '"}}'
+    deserialized = json.loads(to_deserialize)
+
+    assert deserialized["date"] == now
+    assert deserialized["date"].tzinfo is not None
+
+
+def test_can_deserialize_datetime_legacy_strftime_format():
+    """Test backwards compatibility with old strftime format (no timezone)."""
     now = datetime.utcnow()
     to_deserialize = (
         '{"date": {"_type": "datetime", "value": "' + now.strftime("%Y-%m-%d %H:%M:%S.%f") + '"}}'
@@ -24,6 +34,7 @@ def test_can_deserialize_datetime():
     deserialized = json.loads(to_deserialize)
 
     assert deserialized["date"] == now
+    assert deserialized["date"].tzinfo is None
 
 
 def test_can_serialize_date():

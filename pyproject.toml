@@ -92,6 +92,7 @@ optional-dependencies.test = [
     "pytest",
     "pytest-cov",
     "xgboost",
+    "wandb",
 ]
 optional-dependencies.ui = [
     "rubicon-ml[viz]",
@@ -149,9 +150,10 @@ keep_full_version = true
 [tool.pytest.ini_options]
 markers = [
     "run_notebooks: tests that run Jupyter notebooks",
+    "wandb: tests that connect to Weights & Biases",
     "write_files: tests that physically write files to local and S3 filesystems",
 ]
-addopts = "--cov=./rubicon_ml --cov-report=term-missing --cov-fail-under=90 -m='not write_files'"
+addopts = "--cov=./rubicon_ml --cov-fail-under=90 --cov-report=term-missing -m='not write_files and not wandb'"
 minversion = "3.2"
 xfail_strict = true
 

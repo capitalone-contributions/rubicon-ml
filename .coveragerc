@@ -5,3 +5,7 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     if TYPE_CHECKING:
+
+[run]
+omit = 
+    */rubicon_ml/repository/wandb.py

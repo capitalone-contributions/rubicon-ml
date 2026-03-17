@@ -20,7 +20,7 @@ class Rubicon:
     Parameters
     ----------
     persistence : str, optional
-        The persistence type. Can be one of ["filesystem", "memory"].
+        The persistence type. Can be one of ["filesystem", "memory", "wandb"].
         Defaults to "filesystem".
     root_dir : str, optional
         Absolute or relative filepath. Use absolute path for best performance.
