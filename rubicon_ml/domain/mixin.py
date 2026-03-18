@@ -47,15 +47,9 @@ class InitMixin:
             )
 
     def _init_created_at(self, created_at: Optional[datetime.datetime]) -> datetime.datetime:
-        """Initialize the `created_at` attribute to the current time if necessary.
-
-        `datetime.UTC` was added and `datetime.utcnow` was deprecated in Python 3.11.
-        """
+        """Initialize the `created_at` attribute to the current time if necessary."""
         if created_at is None:
-            try:
-                return datetime.datetime.now(datetime.UTC)
-            except AttributeError:
-                return datetime.datetime.utcnow()
+            return datetime.datetime.now(datetime.timezone.utc)
 
         return created_at
 
