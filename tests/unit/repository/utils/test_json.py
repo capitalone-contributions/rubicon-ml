@@ -26,15 +26,39 @@ def test_can_deserialize_datetime():
 
 
 def test_can_deserialize_datetime_legacy_strftime_format():
-    """Test backwards compatibility with old strftime format (no timezone)."""
+    """Test backwards compatibility with old strftime format (no timezone).
+
+    Old versions wrote naive UTC datetimes via strftime. The decoder should
+    normalize these to timezone-aware UTC so they are comparable with new
+    timezone-aware datetimes.
+    """
     now = datetime.utcnow()
     to_deserialize = (
         '{"date": {"_type": "datetime", "value": "' + now.strftime("%Y-%m-%d %H:%M:%S.%f") + '"}}'
     )
     deserialized = json.loads(to_deserialize)
 
-    assert deserialized["date"] == now
-    assert deserialized["date"].tzinfo is None
+    assert deserialized["date"] == now.replace(tzinfo=timezone.utc)
+    assert deserialized["date"].tzinfo is not None
+
+
+def test_can_sort_mixed_legacy_and_new_datetimes():
+    """Test that datetimes written by old and new encoders can be sorted together.
+
+    Old format: naive strftime string, new format: tz-aware isoformat string.
+    Both should deserialize to tz-aware UTC and be comparable.
+    """
+    old_format = '{"_type": "datetime", "value": "2024-01-01 12:00:00.000000"}'
+    new_format = '{"_type": "datetime", "value": "2024-06-15T12:00:00+00:00"}'
+
+    old_dt = json.loads(old_format)
+    new_dt = json.loads(new_format)
+
+    assert old_dt.tzinfo is not None
+    assert new_dt.tzinfo is not None
+
+    sorted_dates = sorted([new_dt, old_dt])
+    assert sorted_dates == [old_dt, new_dt]
 
 
 def test_can_serialize_date():

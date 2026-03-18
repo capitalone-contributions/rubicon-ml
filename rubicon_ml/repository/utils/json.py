@@ -1,7 +1,7 @@
 import dataclasses
 import json
 from base64 import b64decode, b64encode
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import numpy as np
 
@@ -42,9 +42,14 @@ class DomainJSONDecoder(json.JSONDecoder):
     def object_hook(self, obj):
         if obj.get("_type") == "datetime":
             try:
-                return datetime.fromisoformat(obj.get("value"))
+                dt = datetime.fromisoformat(obj.get("value"))
             except ValueError:
-                return datetime.strptime(obj.get("value"), "%Y-%m-%d %H:%M:%S.%f")
+                dt = datetime.strptime(obj.get("value"), "%Y-%m-%d %H:%M:%S.%f")
+
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+
+            return dt
         elif obj.get("_type") == "date":
             return date.fromisoformat(obj.get("value"))
         elif obj.get("_type") == "set":
