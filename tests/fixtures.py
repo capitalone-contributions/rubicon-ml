@@ -583,7 +583,7 @@ def project_json(project_parameters):
 
     return {
         **project_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": "ccf6b8f8-a166-4084-a51f-4f2b6afd2ad9",
         "training_metadata": [["training", "metadata"]],
     }
@@ -608,7 +608,7 @@ def experiment_json(experiment_parameters):
     """JSON representation of an experiment."""
     return {
         **experiment_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": "69e374cd-220b-4cda-9608-52277b38a976",
         "name": None,
         "project_name": "rubicon-ml regression test project",
@@ -634,7 +634,7 @@ def feature_json(feature_parameters):
     """JSON representation of a feature."""
     return {
         **feature_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": str(uuid.uuid4()),
     }
 
@@ -658,7 +658,7 @@ def metric_json(metric_parameters):
     """JSON representation of a metric."""
     return {
         **metric_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": str(uuid.uuid4()),
     }
 
@@ -681,7 +681,7 @@ def parameter_json(parameter_parameters):
     """JSON representation of a parameter."""
     return {
         **parameter_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": str(uuid.uuid4()),
     }
 
@@ -703,7 +703,7 @@ def artifact_project_json(artifact_parameters):
     """JSON representation of an artifact belonging to a project."""
     return {
         **artifact_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": str(uuid.uuid4()),
         "parent_id": "ccf6b8f8-a166-4084-a51f-4f2b6afd2ad9",
     }
@@ -714,7 +714,7 @@ def artifact_experiment_json(artifact_parameters):
     """JSON representation of an artifact belonging to an experiment."""
     return {
         **artifact_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": str(uuid.uuid4()),
         "parent_id": "69e374cd-220b-4cda-9608-52277b38a976",
     }
@@ -737,7 +737,7 @@ def dataframe_project_json(dataframe_parameters):
     """JSON representation of a dataframe belonging to a project."""
     return {
         **dataframe_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": str(uuid.uuid4()),
         "parent_id": "ccf6b8f8-a166-4084-a51f-4f2b6afd2ad9",
     }
@@ -748,7 +748,7 @@ def dataframe_experiment_json(dataframe_parameters):
     """JSON representation of a dataframe belonging to an experiment."""
     return {
         **dataframe_parameters,
-        "created_at": datetime.datetime(2024, 1, 1),
+        "created_at": datetime.datetime(2024, 1, 1, tzinfo=datetime.timezone.utc),
         "id": str(uuid.uuid4()),
         "parent_id": "69e374cd-220b-4cda-9608-52277b38a976",
     }
